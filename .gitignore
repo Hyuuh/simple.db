@@ -1,0 +1,9 @@
+node_modules/
+package-lock.json
+
+simple-db.json
+test.json
+*.db
+*.sqlite
+*.sqlite-journal
+*.zip
