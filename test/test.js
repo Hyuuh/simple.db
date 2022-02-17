@@ -2,7 +2,7 @@
 /* eslint-disable no-unused-expressions */
 /* eslint no-unused-vars: "off"*/
 const Database = require('../');
-const { symbols } = require('../src/utils/utils');
+const { symbols } = require('../lib/utils');
 
 const TO_TEST = [
 	{

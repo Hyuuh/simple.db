@@ -1,7 +1,7 @@
 {
   "name": "simplest.db",
   "version": "1.0.1-2",
-  "main": "./src/index.js",
+  "main": "./lib/index.js",
   "types": "./typings/index.d.ts",
   "license": "Apache License 2.0",
   "description": "A module to do a database in a simple way in JSON or SQLite3",
@@ -19,9 +19,6 @@
     "email": "fabricio19110@gmail.com",
     "url": "https://github.com/Fabricio-191/"
   },
-  "contributors": [
-    "Hyuuh"
-  ],
   "homepage": "https://github.com/Fabricio-191/simplest.db",
   "repository": {
     "type": "git",
@@ -31,7 +28,7 @@
     "url": "https://github.com/Fabricio-191/simplest.db/issues"
   },
   "optionalDependencies": {
-    "better-sqlite3": "5.4.3"
+    "better-sqlite3": "^7.5.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "4.2.0",
@@ -42,10 +39,7 @@
   },
   "scripts": {
     "test": "node test/test.js",
-    "lint": "npx eslint src --fix || npx eslint typings"
-  },
-  "dependencies": {
-    "better-sqlite3": "5.4.3"
+    "lint": "npx eslint . --fix"
   },
   "funding": {
     "type": "patreon",
