@@ -1,6 +1,7 @@
 node_modules/
 package-lock.json
 
+old/
 simple-db.json
 test.json
 *.db
