@@ -1,68 +1,52 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/ban-types */
+export class NumberUtils{
+	constructor(db){
+		this.db = db;
+	}
+	db = null;
 
-/** Value stored in the database */
-type Value = any;
-
-/** Key to a position in the database */
-type Key = string;
-
-/** Database configuration */
-interface DatabaseOptions{
-	/**
-	 * The path to the file with the database
-	 * The default value depends on the database type,
-	 * if it is JSON, the default value is `./simple-db.json`
-	 * if it is SQLite, the default value is `./simple-db.sqlite`
-	 */
-	path?: string;
-
-	/**
-	 * Wich method use to store the data
-	 * By default is `JSON`
-	*/
-	type?: 'JSON' | 'SQLite';
-
-	/**
-	 * Wich method use to manage the cache
-	 * By default is `0`
-	*/
-	cacheType?: 0 | 1 | 2;
-
-	/** Name of the SQLite table */
-	name?: string;
-
-	/**
-	 * Whenether to check if the value was stored correctly
-	 * `false` by default
-	*/
-    check?: boolean;
-}
-
-/** An key/value object that represent something stored in the database */
-interface Entry{
-    key: Key;
-    value: Value;
-}
-
-declare class NumberUtils{
 	/**
 	 * A method to just add x number to a number stored in the database
      * @param key The key where the number is stored
      * @param value The amount to add to the stored number
      * @returns The new value of the stored number
     */
-	add(key: Key, value: number): number;
+	add(key: string, value: number): number {
+		if(typeof value !== 'number' || isNaN(value)){
+			throw new Error('\'value\' must be a number');
+		}
+		// @ts-ignore
+		let num = this.db.get(key);
+
+		if(typeof num === 'undefined'){
+			num = 0;
+		}else if(typeof num !== 'number' || isNaN(num)){
+			throw new Error(`data stored in the key '${key}' is not an number`);
+		}
+
+		num += value;
+
+		// @ts-ignore
+		this.db.set(key, num);
+
+		return num;
+	}
 
 	/**
 	 * @param key The key where the number is stored
 	 * @param value The amount to subtract to the stored number
 	 * @returns The new value of the stored number
 	*/
-	subtract(key: Key, value: number): number;
+	subtract(key: string, value: number): number {
+		return this.add(key, -value);
+	}
 }
 
-declare class ArrayUtils{
+export class ArrayUtils{
+	constructor(db){
+		this.db = db;
+	}
+	db = null;
+
 	/**
 	 * `Array.prototype.push` applied to an array in the database
 	 * @param key The key to the array.
@@ -70,6 +54,113 @@ declare class ArrayUtils{
 	 * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/push
 	 * @returns The new array.
 	*/
+	_getArray(key){
+		const arr = this.db.get(key);
+
+		if(!Array.isArray(arr)){
+			throw new Error(`data stored in the key '${key}' is not an array`);
+		}
+
+		return arr;
+	}
+
+	push(key, ...values){
+		let arr = this.db.get(key);
+
+		if(typeof arr === 'undefined' || arr === null){
+			arr = values;
+		}else{
+			if(!Array.isArray(arr)){
+				throw new Error(`value stored in '${key}' is not an array`);
+			}
+			arr.push(...values);
+		}
+
+		this.db.set(key, arr);
+
+		return arr;
+	}
+
+	extract(key, index){
+		const arr = this.db.get(key);
+
+		if(typeof arr === 'undefined') return;
+
+		if(typeof index === 'function'){
+			index = arr.findIndex(index);
+		}else if(typeof index === 'string'){
+			index = arr.indexOf(index);
+		}
+
+		if(typeof index !== 'number'){
+			throw new Error('\'index\' must be a number or a function that returns a number or a string in the array');
+		}
+		if(index === -1) return;
+
+		const [value] = arr.splice(index, 1);
+
+		this.db.set(key, arr);
+
+		return value;
+	}
+
+	// from here methods throw an error if the array does not exists
+
+	splice(key, start, deleteCount, ...items){
+		const arr = this.db.getArray(key);
+
+		const values = arr.splice(start, deleteCount, ...items);
+
+		this.db.set(key, arr);
+
+		return values;
+	}
+
+	random(key){
+		const arr = this.db.getArray(key);
+		return arr[Math.floor(Math.random() * arr.length)];
+	}
+
+	// from here methods throw an error if the array does not exists
+
+	includes(key, valueToFind, fromIndex){
+		return this.db.getArray(key).includes(valueToFind, fromIndex);
+	}
+
+	sort(key, compareFunction){
+		return this.db.getArray(key).sort(compareFunction);
+	}
+
+	reduce(key, callback, initialValue){
+		return this.db.getArray(key).reduce(callback, initialValue);
+	}
+
+	find(key, callback, thisArg){
+		return this.db.getArray(key).find(callback, thisArg);
+	}
+
+	findIndex(key, callback, thisArg){
+		return this.db.getArray(key).findIndex(callback, thisArg);
+	}
+
+	filter(key, callback, thisArg){
+		return this.db.getArray(key).filter(callback, thisArg);
+	}
+
+	map(key, callback, thisArg){
+		return this.db.getArray(key).map(callback, thisArg);
+	}
+
+	some(key, callback, thisArg){
+		return this.db.getArray(key).some(callback, thisArg);
+	}
+
+	every(key, callback, thisArg){
+		return this.db.getArray(key).every(callback, thisArg);
+	}
+}
+
+declare class ArrayUtils{
 	push(key: Key, ...values: any[]): any[];
 
 	/**
@@ -238,83 +329,3 @@ declare class ArrayUtils{
 	*/
 	random(key: Key): any;
 }
-
-
-declare class Database{
-	/**
-	 * @class Database - This database class
-    */
-	constructor(options: DatabaseOptions);
-
-	/**
-	 * A method to retrieve data from the database
-	 * @param key Key where the value is stored.
-	 * @returns The stored value.
-	*/
-	get(key: Key): Value;
-
-
-	/**
-	 * A method to set data in the database
-	 * @param key Key where the value is stored.
-	 * @param value Value to set.
-	 * @returns The stored value.
-	*/
-	set(key: Key, value?: Value): Value;
-
-	/**
-	 * A method to delete data in the database
-	 * @param key Key where is the data to delete.
-	 * @returns Deleted value.
-	*/
-	delete(key: Key): Value;
-
-	/**
-	 * Deletes all data in the database.
-	 * @returns All data deleted.
-	*/
-	clear(): object;
-
-
-	/**
-	 * An getter that returns an array with all the data in the database, in form of entries (key/value objects).
-	 * @returns Database entries
-	*/
-	get entries(): Entry[];
-
-	/**
-	 * An getter that returns an array with all database keys.
-	 * @returns Database keys
-	*/
-	get keys(): Key[];
-
-	/**
-	 * An getter that returns an array with all database values.
-	 * @returns Database values
-	*/
-	get values(): Value[];
-
-	/**
-	 * Special methods for facilitating storing and modifying numbers.
-	*/
-    number: NumberUtils;
-
-    /**
-	 * Special methods for facilitating storing and modifying arrays.
-	*/
-    array: ArrayUtils;
-
-    /**
-	 * Returns database data as a JSON string
-     * @param beautify Whenever beautify the JSON or not
-	*/
-    toJSON(beautify: boolean): string;
-
-    /**
-	 * Another method to create a database
-	 * @param options Database configuration
-	*/
-    static init(options: DatabaseOptions): Database;
-}
-
-export = Database;

@@ -1,10 +1,16 @@
-const fs = require('fs'), object = require('./object.js');
-const { ArrayUtils, NumberUtils } = require('./extras.js');
+import fs from 'fs';
+import object from './object.js';
+import { ArrayUtils, NumberUtils } from './extras.js';
+import util from 'util';
 
-const util = require('util');
+interface Options {
+	cacheType?: number;
+	check?: boolean;
+	path?: string;
+}
 
 class JSONDatabase{
-	constructor(options){
+	constructor(options: Options){
 		options = parseOptions(options);
 
 		if(!fs.existsSync(options.path)){
@@ -23,13 +29,12 @@ class JSONDatabase{
 			this._cache = JSONRead(this.path);
 		}
 	}
-	// @ts-ignore
 	_cache = {};
 	_cacheType = 0;
 	path = null;
 	check = false;
 
-	get data(){
+	get data(): object {
 		switch(this._cacheType){
 			case 0:
 				return JSONRead(this.path);
@@ -41,13 +46,13 @@ class JSONDatabase{
 				throw new Error('\'cacheType\' must be a number between 0 and 2');
 		}
 	}
-	get keys(){
+	get keys(): string[] {
 		return Object.keys(this.data);
 	}
-	get values(){
+	get values(): string[] {
 		return Object.values(this.data);
 	}
-	get entries(){
+	get entries(): [string, Value][] {
 		return Object.entries(this.data);
 	}
 
@@ -87,11 +92,11 @@ class JSONDatabase{
 	array = null;
 	number = null;
 
-	toJSON(indentation = null){
+	toJSON(indentation = null): string {
 		return JSON.stringify(this.data(), null, indentation);
 	}
 
-	[Symbol.for('nodejs.util.inspect.custom')](depth = 0){
+	[Symbol.for('nodejs.util.inspect.custom')](depth = 0): string{
 		if(typeof depth !== 'number') throw new Error('\'depth\' should be a number');
 
 		const str = util.inspect(this.data, {
@@ -101,7 +106,7 @@ class JSONDatabase{
 	}
 }
 
-module.exports = JSONDatabase;
+export default JSONDatabase;
 
 /*
 database

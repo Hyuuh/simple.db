@@ -1,9 +1,8 @@
 /* eslint-disable eqeqeq */
 /* eslint-disable no-undefined */
-/* eslint-disable default-param-last */
 
 const regex = /\[(.*?)\]|[^.[]+/g;
-module.exports = {
+export default {
 	get(obj, props){
 		if(props.length === 0){
 			return obj;
