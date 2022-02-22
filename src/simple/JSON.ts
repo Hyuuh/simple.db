@@ -1,11 +1,5 @@
-import Base, { RawOptions, Value, obj, cacheTypes } from './base';
+import Base, { RawOptions, Data, Value, obj, cacheTypes } from './base';
 import * as fs from 'fs';
-
-interface Options {
-	cacheType: cacheTypes;
-	path: string;
-	check: boolean;
-}
 
 export default class extends Base{
 	constructor(options?: RawOptions){
@@ -24,7 +18,7 @@ export default class extends Base{
 	path: string = null;
 	check = false;
 
-	get data(): Record<string, Value> {
+	get data(): Data {
 		switch(this._cacheType){
 			case 0:
 				return JSONRead(this.path);
@@ -57,47 +51,10 @@ export default class extends Base{
 	}
 }
 
-function JSONWrite(path: string, data: Value[] | Record<string, Value>, check = false){
-	let stringifiedData;
-
-	try{
-		stringifiedData = JSON.stringify(data, null, '\t');
-	}catch(e){
-		throw new Error('Circular structures cannot be stored');
-	}
-
-	try{
-		fs.writeFileSync(path, stringifiedData);
-	}catch(e){}
-
-	if(check){
-		const dataInJSON = fs.readFileSync(path, 'utf-8');
-
-		if(dataInJSON !== stringifiedData){
-			const path2 = `../backup-${Date.now()}.json`;
-
-			JSONWrite(path2, data);
-			throw new Error(`Error writing JSON in '${path}', data saved in '${path2}'`);
-		}
-	}
-}
-
-function JSONRead(path: string): Record<string, Value> {
-	let data;
-
-	try{
-		data = fs.readFileSync(path, 'utf-8');
-	}catch(e){
-		throw new Error(`the database in ${path} was deleted`);
-	}
-
-	try{
-		data = JSON.parse(data);
-	}catch(e){
-		throw new Error(`Error parsing JSON in '${path}'`);
-	}
-
-	return data;
+interface Options {
+	cacheType: cacheTypes;
+	path: string;
+	check: boolean;
 }
 
 const DEFAULT_OPTIONS = {
@@ -123,4 +80,47 @@ function parseOptions(options: RawOptions = {}): Options {
 	}
 
 	return options as Options;
+}
+
+function JSONWrite(path: string, data: Data, check = false){
+	let stringifiedData;
+
+	try{
+		stringifiedData = JSON.stringify(data, null, '\t');
+	}catch(e){
+		throw new Error('Circular structures cannot be stored');
+	}
+
+	try{
+		fs.writeFileSync(path, stringifiedData);
+	}catch(e){}
+
+	if(check){
+		const dataInJSON = fs.readFileSync(path, 'utf-8');
+
+		if(dataInJSON !== stringifiedData){
+			const path2 = `../backup-${Date.now()}.json`;
+
+			JSONWrite(path2, data);
+			throw new Error(`Error writing JSON in '${path}', data saved in '${path2}'`);
+		}
+	}
+}
+
+function JSONRead(path: string): Data {
+	let data;
+
+	try{
+		data = fs.readFileSync(path, 'utf-8');
+	}catch(e){
+		throw new Error(`the database in ${path} was deleted`);
+	}
+
+	try{
+		data = JSON.parse(data);
+	}catch(e){
+		throw new Error(`Error parsing JSON in '${path}'`);
+	}
+
+	return data;
 }

@@ -1,9 +1,5 @@
-interface JSONArray extends Array<JSONValue> {}
-interface JSONObject { [x: string]: JSONValue; }
-type JSONValue = string | number | boolean | JSONObject | JSONArray;
-
-export type Value = JSONValue;
-export type Data = Record<string, Value> | Value[];
+export type Value = string | number | boolean | Data;
+export type Data = { [x: string]: Value; } | Value[];
 
 export type cacheTypes = 0 | 1 | 2;
 
@@ -80,7 +76,7 @@ class ArrayUtils{
 	extract(
 		key: string,
 		index: number | string | (
-			(value: JSONValue, index: number, obj: JSONValue[]) => unknown
+			(value: Value, index: number, obj: Value[]) => unknown
 		)
 	): Value {
 		const arr = this.db.get(key);
@@ -110,7 +106,12 @@ class ArrayUtils{
 
 	// from here methods throw an error if the array does not exists
 
-	splice(key: string, start: number, deleteCount: number, ...items: Value[]){
+	splice(
+		key: string,
+		start: number,
+		deleteCount: number,
+		...items: Value[]
+	){
 		const arr = this._getArray(key);
 		const values = arr.splice(start, deleteCount, ...items);
 
@@ -126,25 +127,17 @@ class ArrayUtils{
 
 	// from here methods throw an error if the array does not exists
 
-	includes(key: string, searchElement: any, fromIndex?: number): boolean {
+	includes(
+		key: string,
+		searchElement: Value,
+		fromIndex?: number
+	): boolean {
 		return this._getArray(key).includes(searchElement, fromIndex);
-	}
-
-	sort(key: string, compareFn?: (a: Value, b: Value) => number): Value[] {
-		return this._getArray(key).sort(compareFn);
-	}
-
-	reduce(
-        key: string,
-        callback: (),
-        initialValue: any
-    ): any {
-		return this._getArray(key).reduce(callback, initialValue);
 	}
 
 	find(
 		key: string,
-		callback: (),
+		callback: (value: any, index: number, obj: any[]) => unknown,
 		thisArg?: any
 	){
 		return this._getArray(key).find(callback, thisArg);
@@ -152,15 +145,30 @@ class ArrayUtils{
 
 	findIndex(
 		key: string,
-		callback: (),
+		callback: (value: any, index: number, obj: any[]) => unknown,
 		thisArg?: any
 	){
 		return this._getArray(key).findIndex(callback, thisArg);
 	}
 
+	sort(
+		key: string,
+		compareFn?: (a: Value, b: Value) => number
+	): Value[] {
+		return this._getArray(key).sort(compareFn);
+	}
+
+	reduce(
+        key: string,
+        callback: (previousValue: any, currentValue: Value, currentIndex: number, array: any[]) => any,
+        initialValue: any
+    ): any {
+		return this._getArray(key).reduce(callback, initialValue);
+	}
+
 	filter(
 		key: string,
-		callback: (),
+		callback: (value: any, index: number, obj: any[]) => unknown,
 		thisArg?: any
 	){
 		return this._getArray(key).filter(callback, thisArg);
@@ -168,7 +176,7 @@ class ArrayUtils{
 
 	map(
 		key: string,
-		callback: (),
+		callback: (value: any, index: number, obj: any[]) => unknown,
 		thisArg?: any
 	){
 		return this._getArray(key).map(callback, thisArg);
@@ -176,7 +184,7 @@ class ArrayUtils{
 
 	some(
 		key: string,
-		callback: (),
+		callback: (value: any, index: number, obj: any[]) => unknown,
 		thisArg?: any
 	){
 		return this._getArray(key).some(callback, thisArg);
@@ -184,7 +192,7 @@ class ArrayUtils{
 
 	every(
 		key: string,
-		callback: (),
+		callback: (value: any, index: number, obj: any[]) => unknown,
 		thisArg?: any
 	){
 		return this._getArray(key).every(callback, thisArg);
@@ -196,10 +204,10 @@ export default abstract class Base{
 		this.array = new ArrayUtils(this);
 		this.number = new NumberUtils(this);
 	}
-	_cache = {};
+	_cache: Data = {};
 	_cacheType: cacheTypes = 0;
 
-	abstract get data(): Record<string, Value>;
+	abstract get data(): Data;
 	get keys(): string[] {
 		return Object.keys(this.data);
 	}
@@ -225,25 +233,24 @@ export default abstract class Base{
 
 const regex = /\[(.*?)\]|[^.[]+/g;
 export const obj = {
-	get(obj: Value, props: string[]){
-		if(props.length === 0){
-			return obj;
-		}
+	get(obj: any, props: string[]): any {
+		if(props.length === 0) return obj;
 
-		return props.reduce((acc, prop) => {
-			if(acc == undefined || acc[prop] == undefined){
+		return props.reduce((acc: Value, prop: string, i: number) => {
+			if(typeof acc !== 'object' || acc === null){
+				throw new Error(`Value at ${props.slice(0, i).join('.')} is not an object`);
+			}
+			if(!(prop in acc)){
 				return undefined;
 			}
 
 			return acc[prop];
 		}, obj);
 	},
-	set(obj, props: string[], value: Value = null){
-		if(props.length === 0){
-			return value;
-		}
+	set(obj: any, props: string[], value: Value = null): any {
+		if(props.length === 0) return;
 
-		props.reduce((acc, prop, index) => {
+		props.reduce((acc: Value, prop: string, index: number) => {
 			if(acc == undefined) return undefined;
 
 			if(acc[prop] === undefined){
@@ -258,7 +265,7 @@ export const obj = {
 
 		return obj;
 	},
-	delete(obj, props){
+	delete(obj: any, props: string[]): void {
 		const key = props.pop();
 		obj = this.get(obj, props);
 
@@ -266,7 +273,7 @@ export const obj = {
 
 		delete obj[key];
 	},
-	clone(obj){
+	clone(obj: any): any {
 		try{
 			return JSON.parse(
 				JSON.stringify(obj)
@@ -275,19 +282,13 @@ export const obj = {
 			return undefined;
 		}
 	},
-	parseKey(key){
+	parseKey(key: string): string[] {
 		key = key.trim();
 
 		if(typeof key !== 'string'){
 			throw new Error('\'key\' must be a string');
 		}else if(key.match(/\.{2,}|^\.|\.$/) || key === ''){
 			throw new Error('\'key\' is not valid');
-		}
-
-		const props = [];
-
-		for(let i = 0; i < key.length; i++){
-			
 		}
 
 		return key.split('.');

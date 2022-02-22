@@ -1,11 +1,5 @@
-import Base, { RawOptions, Value, cacheTypes } from './base';
+import Base, { RawOptions, Data, Value, cacheTypes } from './base';
 import * as BETTER_SQLITE3 from 'better-sqlite3';
-
-interface Options {
-	cacheType: cacheTypes;
-	path: string;
-	name: string;
-}
 
 export default class extends Base{
 	constructor(options?: RawOptions){
@@ -29,22 +23,20 @@ export default class extends Base{
 		}
 
 		Object.assign(this, options);
-		this.statements= {
-				set: db.prepare(`INSERT OR REPLACE INTO ${options.name} VALUES(?, ?)`),
-
-				delete: db.prepare(`DELETE FROM ${options.name} WHERE key = ?`),
-				clear: db.prepare(`DELETE FROM ${options.name}`),
-
-				getAll: db.prepare(`SELECT * FROM ${options.name}`),
-				get: db.prepare(`SELECT * FROM ${options.name} WHERE key = ?`),
+		this.statements = {
+			set: db.prepare(`INSERT OR REPLACE INTO ${options.name} VALUES(?, ?)`),
+			delete: db.prepare(`DELETE FROM ${options.name} WHERE key = ?`),
+			clear: db.prepare(`DELETE FROM ${options.name}`),
+			getAll: db.prepare(`SELECT * FROM ${options.name}`),
+			get: db.prepare(`SELECT * FROM ${options.name} WHERE key = ?`),
 		}
 	}
 	statements: Record<string, BETTER_SQLITE3.Statement> = null;
 
-	get data(): Record<string, Value> {
+	get data(): Data {
 		return this.statements.getAll.all()
 			.reduce((
-				acc: Record<string, string>,
+				acc: Record<string, Value>,
 				{ key, value }: { key: string, value: string }
 			) => {
 				acc[key] = JSON.parse(value);
@@ -61,7 +53,7 @@ export default class extends Base{
 	set(key: string, value: Value): void {
 		value = JSON.stringify(value);
 
-		this.statements.set.run(key, value);
+		this.statements.set.run(key, JSON.stringify(value));
 	}
 	delete(key: string): void {
 		this.statements.delete.run(key);
@@ -69,6 +61,12 @@ export default class extends Base{
 	clear(): void {
 		this.statements.clear.run();
 	}
+}
+
+interface Options {
+	cacheType: cacheTypes;
+	path: string;
+	name: string;
 }
 
 const DEFAULT_OPTIONS = {
