@@ -31,26 +31,36 @@ export default class extends Base{
 			getAll: db.prepare(`SELECT * FROM ${options.name}`),
 			get: db.prepare(`SELECT * FROM ${options.name} WHERE key = ?`),
 		}
+		if(this._cacheType !== 0){
+			this._cache = this._getAll();
+		}
 	}
 	statements: Record<string, BETTER_SQLITE3.Statement> = null;
 
+	_getAll(): Data {
+		return this.statements.getAll.all().reduce((
+			acc: Record<string, Value>,
+			{ key, value }: { key: string, value: string }
+		) => {
+			acc[key] = JSON.parse(value);
 
+			return acc;
+		}, {});
+	}
 	get data(): Data {
-		return this.statements.getAll.all()
-			.reduce((
-				acc: Record<string, Value>,
-				{ key, value }: { key: string, value: string }
-			) => {
-				acc[key] = JSON.parse(value);
-
-				return acc;
-			}, {});
+		switch(this._cacheType){
+			case 0: return this._getAll();
+			case 1: return obj.clone(this._cache);
+			case 2: return this._cache;
+			default: throw new Error("'cacheType' must be a number between 0 and 2");
+		}
 	}
 	get(key: string): Value {
-		const entry = this.statements.get.get(key);
+		const [k, ...props] = obj.parseKey(key);
+		const entry = this.statements.get.get(k);
 		if(!entry) return;
 
-		return JSON.parse(entry.value);
+		return obj.get(JSON.parse(entry.value), props);
 	}
 	set(key: string, value: Value): void {
 		value = JSON.stringify(value);

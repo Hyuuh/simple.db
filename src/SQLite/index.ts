@@ -6,20 +6,52 @@ class Base{
 	protected readonly db: Database;
 }
 
+/*
+column-constraint
+1. 
+2. PRIMARY KEY (ASC|DESC)? (conflict-clause) AUTOINCREMENT?
+3. NOT NULL (conflict-clause)?
+4. UNIQUE (conflict-clause)?
+5. DEFAULT (value)
+
+conflict-clause
+1.
+2. ON CONFLICT (ROLLBACK|ABORT|FAIL|IGNORE|REPLACE)
+*/
+
+type column = string | {
+	name: string,
+	type: string,
+}
+
 class ColumnsManager extends Base{
-	constructor(db: Database){
+	constructor(db: Database, tableName: string){
 		super(db);
+		this.tableName = tableName;
+	}
+	tableName: string;
+
+	add(name: string): void {
+		this.db.prepare(`ALTER TABLE [${this.tableName}] ADD COLUMN ${name} BLOB`).run();
 	}
 
-	add(column): void {
-
+	remove(name: string): void {
+		this.db.prepare(`ALTER TABLE [${this.tableName}] DROP COLUMN ${name}`).run();
 	}
 
-	remove(column): void {
-
+	rename(oldName: string, newName: string): void {
+		this.db.prepare(`ALTER TABLE [${this.tableName}] RENAME COLUMN ${oldName} TO ${newName}`).run();
 	}
 
-	static parse(columns: columns): string {
+	static parseOne(column: column): string {
+		if(typeof column === 'string') return column;
+
+		return '';
+	}
+
+	static parse(columns: column[] | string): string {
+		if(typeof columns === 'string') return columns;
+
 		return '';
 	}
 }
@@ -28,6 +60,7 @@ class Table extends Base{
 	constructor(db: Database, name: string){
 		super(db);
 		this.name = name;
+		this.columns = new ColumnsManager(db, name);
 	}
 	name: string;
 	columns: ColumnsManager;
@@ -61,18 +94,13 @@ class TransactionManager extends Base{
 	}
 }
 
-type columns = string[] | string | Array<{
-	name: string,
-	type: string,
-}>
-
 class TablesManager extends Base{
 	constructor(db: Database){
 		super(db);
 	}
 	_tables: Record<string, Table> = {};
 
-	create(name: string, columns: columns): Table {
+	create(name: string, columns: column[] | string): Table {
 		if(name in this._tables) return this._tables[name];
 		this.db.prepare(`CREATE TABLE IF NOT EXISTS [${name}] (${
 			ColumnsManager.parse(columns)
@@ -91,6 +119,10 @@ class TablesManager extends Base{
 			delete this._tables[name];
 		}
 	}
+
+	rename(oldName: string, newName: string): void {
+		this.db.prepare(`ALTER TABLE [${oldName}] RENAME TO [${newName}]`).run();
+	}
 }
 
 export default class extends Base{
@@ -103,16 +135,17 @@ export default class extends Base{
 	transaction: TransactionManager;
 	tables: TablesManager
 
-	vacuum(file?: string): void {
-		if(file){
-			this.db.prepare(`VACUUM INTO [${file}]`).run();
-		}else{
-			this.db.prepare('VACUUM').run();
-		}
+	optimize(): void {
+		this.pragma('optimize');
+		this.run('VACUUM');
 	}
 	
-	pragma(str: string): any {
+	pragma(str: string): unknown {
 		return this.db.pragma(str);
+	}
+
+	run(str: string): unknown {
+		return this.db.prepare(str).run();
 	}
 }
 
