@@ -1,5 +1,5 @@
 import Base, { RawOptions, Data, Value, cacheTypes } from './base';
-import obj from 'object'
+import obj from './object'
 import * as BETTER_SQLITE3 from 'better-sqlite3';
 
 export default class extends Base{
@@ -33,6 +33,7 @@ export default class extends Base{
 		}
 	}
 	statements: Record<string, BETTER_SQLITE3.Statement> = null;
+
 
 	get data(): Data {
 		return this.statements.getAll.all()

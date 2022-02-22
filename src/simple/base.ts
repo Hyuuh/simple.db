@@ -1,8 +1,7 @@
 export type Value = string | number | boolean | Data;
-export type Data = { [x: string]: Value; } | Value[];
+export type Data = { [key: string]: Value; } | Value[];
 
 export type cacheTypes = 0 | 1 | 2;
-
 export type RawOptions = {
 	cacheType?: cacheTypes;
 	path?: string;
@@ -137,17 +136,17 @@ class ArrayUtils{
 
 	find(
 		key: string,
-		callback: (value: any, index: number, obj: any[]) => unknown,
-		thisArg?: any
-	){
+		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		thisArg?: unknown
+	): Value {
 		return this._getArray(key).find(callback, thisArg);
 	}
 
 	findIndex(
 		key: string,
-		callback: (value: any, index: number, obj: any[]) => unknown,
-		thisArg?: any
-	){
+		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		thisArg?: unknown
+	): number | -1 {
 		return this._getArray(key).findIndex(callback, thisArg);
 	}
 
@@ -160,41 +159,41 @@ class ArrayUtils{
 
 	reduce(
         key: string,
-        callback: (previousValue: any, currentValue: Value, currentIndex: number, array: any[]) => any,
-        initialValue: any
-    ): any {
+        callback: (previousValue: unknown, currentValue: Value, currentIndex: number, array: Value[]) => unknown,
+        initialValue: unknown
+    ): unknown {
 		return this._getArray(key).reduce(callback, initialValue);
 	}
 
 	filter(
 		key: string,
-		callback: (value: any, index: number, obj: any[]) => unknown,
-		thisArg?: any
-	){
+		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		thisArg?: unknown
+	): Value[] {
 		return this._getArray(key).filter(callback, thisArg);
 	}
 
 	map(
 		key: string,
-		callback: (value: any, index: number, obj: any[]) => unknown,
-		thisArg?: any
-	){
+		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		thisArg?: unknown
+	): unknown[] {
 		return this._getArray(key).map(callback, thisArg);
 	}
 
 	some(
 		key: string,
-		callback: (value: any, index: number, obj: any[]) => unknown,
-		thisArg?: any
-	){
+		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		thisArg?: unknown
+	): boolean {
 		return this._getArray(key).some(callback, thisArg);
 	}
 
 	every(
 		key: string,
-		callback: (value: any, index: number, obj: any[]) => unknown,
-		thisArg?: any
-	){
+		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		thisArg?: unknown
+	): boolean {
 		return this._getArray(key).every(callback, thisArg);
 	}
 }
@@ -230,7 +229,6 @@ export default abstract class Base{
 		return JSON.stringify(this.data, null, indentation);
 	}
 }
-
 
 /*
 database

@@ -3,7 +3,7 @@ export default {
 	get(obj: any, props: string[]): any {
 		if(props.length === 0) return obj;
 
-		return props.reduce((acc: Value, prop: string, i: number) => {
+		return props.reduce((acc: any, prop: string, i: number) => {
 			if(typeof acc !== 'object' || acc === null){
 				throw new Error(`Value at ${props.slice(0, i).join('.')} is not an object`);
 			}
@@ -14,10 +14,10 @@ export default {
 			return acc[prop];
 		}, obj);
 	},
-	set(obj: any, props: string[], value: Value = null): any {
+	set(obj: any, props: string[], value: any = null): any {
 		if(props.length === 0) return;
 
-		props.reduce((acc: Value, prop: string, index: number) => {
+		props.reduce((acc: any, prop: string, index: number) => {
 			if(acc == undefined) return undefined;
 
 			if(acc[prop] === undefined){
@@ -61,3 +61,15 @@ export default {
 		return key.split('.');
 	},
 };
+
+/*
+function parseKey(key){
+	if(typeof key !== 'string'){
+		throw new DatabaseError('\'key\' must be a string');
+	}else if(key.match(/\.{2,}|^\.|\.$/) || key === ''){
+		throw new DatabaseError('\'key\' is not valid');
+	}
+
+	return key.split(/\.|\[(\d)\]/).filter(k => k);
+}
+*/

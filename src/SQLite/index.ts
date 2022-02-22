@@ -11,8 +11,16 @@ class ColumnsManager extends Base{
 		super(db);
 	}
 
-	static parse(columns: columns): string {
+	add(column): void {
 
+	}
+
+	remove(column): void {
+
+	}
+
+	static parse(columns: columns): string {
+		return '';
 	}
 }
 
@@ -109,3 +117,4 @@ export default class extends Base{
 }
 
 // https://www.sqlite.org/lang.html
+// https://github.com/JoshuaWise/better-sqlite3/blob/master/docs/api.md

@@ -1,13 +1,15 @@
 node_modules/
 package-lock.json
 
+lib/
+old/
 simple-db.json
 test.json
 *.db
 *.sqlite
 *.sqlite-journal
-*.zip
 
+test/
 .gitignore
-examples/
+.npmignore
 .eslintrc.json

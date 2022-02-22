@@ -1,8 +1,9 @@
 {
 	"compilerOptions": {
 		"lib": ["ES7"],
-		"module": "es2022",
-		"target": "es5",
+		"module": "commonjs",
+		"outDir": "./lib",
+		"target": "es6",
 		"noImplicitAny": true,
 		"removeComments": true,
 		"preserveConstEnums": true,

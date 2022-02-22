@@ -1,5 +1,5 @@
 import Base, { RawOptions, Data, Value, cacheTypes } from './base';
-import obj from 'object'
+import obj from './object'
 import * as fs from 'fs';
 
 export default class extends Base{
@@ -21,14 +21,10 @@ export default class extends Base{
 
 	get data(): Data {
 		switch(this._cacheType){
-			case 0:
-				return JSONRead(this.path);
-			case 1:
-				return obj.clone(this._cache);
-			case 2:
-				return this._cache;
-			default:
-				throw new Error('\'cacheType\' must be a number between 0 and 2');
+			case 0: return JSONRead(this.path);
+			case 1: return obj.clone(this._cache);
+			case 2: return this._cache;
+			default: throw new Error("'cacheType' must be a number between 0 and 2");
 		}
 	}
 	get(key: string): Value {
