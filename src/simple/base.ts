@@ -7,6 +7,13 @@ export type Data = Record<string, Value> | Value[];
 
 export type cacheTypes = 0 | 1 | 2;
 
+export type RawOptions = {
+	cacheType?: cacheTypes;
+	path?: string;
+	check?: boolean;
+	name?: string;
+} | string;
+
 class NumberUtils{
 	constructor(db: Base){
 		this.db = db;
@@ -27,13 +34,13 @@ class NumberUtils{
 
 		num += Value;
 
-		this.db.set(key: string, num);
+		this.db.set(key, num);
 
 		return num;
 	}
 
 	subtract(key: string, Value: number): number {
-		return this.add(key: string, -Value);
+		return this.add(key, -Value);
 	}
 }
 
@@ -184,6 +191,38 @@ class ArrayUtils{
 	}
 }
 
+export default abstract class Base{
+	constructor(){
+		this.array = new ArrayUtils(this);
+		this.number = new NumberUtils(this);
+	}
+	_cache = {};
+	_cacheType: cacheTypes = 0;
+
+	abstract get data(): Record<string, Value>;
+	get keys(): string[] {
+		return Object.keys(this.data);
+	}
+	get values(): Value[] {
+		return Object.values(this.data);
+	}
+	get entries(): [string, Value][] {
+		return Object.entries(this.data);
+	}
+
+	abstract get(key: string): Value;
+	abstract set(key: string, value: Value): void;
+	abstract delete(key: string): void;
+	abstract clear(): void;
+
+	array: ArrayUtils = null;
+	number: NumberUtils = null;
+
+	toJSON(indentation: string = null): string {
+		return JSON.stringify(this.data, null, indentation);
+	}
+}
+
 const regex = /\[(.*?)\]|[^.[]+/g;
 export const obj = {
 	get(obj: Value, props: string[]){
@@ -255,44 +294,6 @@ export const obj = {
 	},
 };
 
-export type RawOptions = {
-	cacheType?: cacheTypes;
-	path?: string;
-	check?: boolean;
-	name?: string;
-} | string;
-
-export default abstract class Base{
-	constructor(){
-		this.array = new ArrayUtils(this);
-		this.number = new NumberUtils(this);
-	}
-	_cache = {};
-	_cacheType: cacheTypes = 0;
-
-	abstract get data(): Record<string, Value>;
-	get keys(): string[] {
-		return Object.keys(this.data);
-	}
-	get values(): Value[] {
-		return Object.values(this.data);
-	}
-	get entries(): [string, Value][] {
-		return Object.entries(this.data);
-	}
-
-	abstract get(key: string): Value;
-	abstract set(key: string, value: Value): void;
-	abstract delete(key: string): void;
-	abstract clear(): void;
-
-	array: ArrayUtils = null;
-	number: NumberUtils = null;
-
-	toJSON(indentation: string = null): string {
-		return JSON.stringify(this.data, null, indentation);
-	}
-}
 
 /*
 database

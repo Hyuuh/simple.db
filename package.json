@@ -1,6 +1,6 @@
 {
   "name": "simplest.db",
-  "version": "1.0.1-2",
+  "version": "2.0.0",
   "main": "./lib/index.js",
   "types": "./typings/index.d.ts",
   "license": "Apache License 2.0",
@@ -34,7 +34,6 @@
     "@types/better-sqlite3": "^7.4.2",
     "@typescript-eslint/eslint-plugin": "4.2.0",
     "@typescript-eslint/parser": "4.2.0",
-    "babel-eslint": "10.1.0",
     "eslint": "^7.32.0",
     "typescript": "^4.0.3"
   },

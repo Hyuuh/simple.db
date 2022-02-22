@@ -28,10 +28,8 @@ export default class extends Base{
 			throw new Error("introduced database 'name' is not valid (in SQLite)");
 		}
 
-		Object.assign(this, {
-			check: options.check,
-			path: options.path,
-			statements: {
+		Object.assign(this, options);
+		this.statements= {
 				set: db.prepare(`INSERT OR REPLACE INTO ${options.name} VALUES(?, ?)`),
 
 				delete: db.prepare(`DELETE FROM ${options.name} WHERE key = ?`),
@@ -39,8 +37,7 @@ export default class extends Base{
 
 				getAll: db.prepare(`SELECT * FROM ${options.name}`),
 				get: db.prepare(`SELECT * FROM ${options.name} WHERE key = ?`),
-			},
-		});
+		}
 	}
 	statements: Record<string, BETTER_SQLITE3.Statement> = null;
 
