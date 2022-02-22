@@ -1,4 +1,5 @@
-import Base, { RawOptions, Data, Value, obj, cacheTypes } from './base';
+import Base, { RawOptions, Data, Value, cacheTypes } from './base';
+import obj from 'object'
 import * as fs from 'fs';
 
 export default class extends Base{

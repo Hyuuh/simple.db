@@ -1,4 +1,5 @@
 import Base, { RawOptions, Data, Value, cacheTypes } from './base';
+import obj from 'object'
 import * as BETTER_SQLITE3 from 'better-sqlite3';
 
 export default class extends Base{
