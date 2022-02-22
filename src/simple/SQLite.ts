@@ -1,18 +1,22 @@
-import Base, { Options, value, key, objectUtils } from './base';
-import * as BETTER_SQLITE3_DATABASE from 'better-sqlite3';
+import Base, { RawOptions, Value, cacheTypes } from './base';
+import * as BETTER_SQLITE3 from 'better-sqlite3';
 
-class SQLiteDatabase extends Base{
-	constructor(options: Options){
-		super(options);
-		if(!BETTER_SQLITE3_DATABASE){
-			throw new Error('You must have \'better-sqlite3\' module installed in order to use the SQLite database type');
-		}
+interface Options {
+	cacheType: cacheTypes;
+	path: string;
+	name: string;
+}
+
+export default class extends Base{
+	constructor(options?: RawOptions){
+		super();
+		options = parseOptions(options);
 
 		let db;
 		try{
-			db = new BETTER_SQLITE3_DATABASE(options.path);
+			db = new BETTER_SQLITE3(options.path);
 		}catch(e){
-			throw new Error('introduced \'path\' is not valid');
+			throw new Error("introduced 'path' is not valid");
 		}
 
 		try{
@@ -21,7 +25,7 @@ class SQLiteDatabase extends Base{
 			if(e.message === 'file is not a database'){
 				throw new Error(`file in '${options.path}' is not a valid SQLite database`);
 			}
-			throw new Error('introduced database \'name\' is not valid (in SQLite)');
+			throw new Error("introduced database 'name' is not valid (in SQLite)");
 		}
 
 		Object.assign(this, {
@@ -38,44 +42,63 @@ class SQLiteDatabase extends Base{
 			},
 		});
 	}
-	path: string = null;
-	statements = null;
-	check = false;
+	statements: Record<string, BETTER_SQLITE3.Statement> = null;
 
-	get data(): Record<string, value> {
+	get data(): Record<string, Value> {
 		return this.statements.getAll.all()
-			.reduce((acc: , { key, value }) => {
+			.reduce((
+				acc: Record<string, string>,
+				{ key, value }: { key: string, value: string }
+			) => {
 				acc[key] = JSON.parse(value);
 
 				return acc;
 			}, {});
 	}
-	set(key: key, value: value){
-		value = JSON.stringify(value);
-
-		this.statements.set.run(key, value);
-
-		if(this.check){
-			const stored = this.statements.get.get(key);
-
-			if(!stored || stored.value !== value){
-				throw new Error(`a value didn't store correctly in SQLite database at '${this.path}'`);
-			}
-		}
-	}
-	delete(key: key){
-		return this.statements.delete.run(key);
-	}
-	clear(){
-		this.statements.clear.run();
-	}
-	get(key: key){
+	get(key: string): Value {
 		const entry = this.statements.get.get(key);
-
 		if(!entry) return;
 
 		return JSON.parse(entry.value);
 	}
+	set(key: string, value: Value): void {
+		value = JSON.stringify(value);
+
+		this.statements.set.run(key, value);
+	}
+	delete(key: string): void {
+		this.statements.delete.run(key);
+	}
+	clear(): void {
+		this.statements.clear.run();
+	}
 }
 
-export default SQLiteDatabase;
+const DEFAULT_OPTIONS = {
+	cacheType: 1,
+	path: './simple-db.sqlite',
+	name: 'simple-db',
+}
+
+function parseOptions(options: RawOptions = {}): Options {
+	if(typeof options === 'string') options = { path: options };
+	if(typeof options !== 'object'){
+		throw new Error('the database options should be an object or a string with the path');
+	}
+
+	options = Object.assign({}, DEFAULT_OPTIONS, options);
+
+	if(typeof options.path !== 'string'){
+		throw new Error('the database path should be a string');
+	}else if(!Number.isFinite(options.cacheType)){
+		throw new Error("'cacheType' should be a number between 0 and 2");
+	}else if(typeof options.name !== 'string'){
+		throw new Error("database 'name' should be a string");
+	}else if(options.name.startsWith('sqlite_')){
+		throw new Error("database 'name' can't start with 'sqlite_' (in SQLite)");
+	}else if(!options.name.match(/^[A-z_'"`][A-z\d_'"`]*$/)){
+		throw new Error("introduced database 'name' is not valid (in SQLite)");
+	}
+
+	return options as Options;
+}

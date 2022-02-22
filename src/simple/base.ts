@@ -1,7 +1,11 @@
-type key = string; // `${string}${'' | `.${key}`}`;
-type value = any; // string | number | boolean | null | undefined | Record<string, value> | Array<value>;
+interface JSONArray extends Array<JSONValue> {}
+interface JSONObject { [x: string]: JSONValue; }
+type JSONValue = string | number | boolean | JSONObject | JSONArray;
 
-type cacheTypes = 0 | 1 | 2;
+export type Value = JSONValue;
+export type Data = Record<string, Value> | Value[];
+
+export type cacheTypes = 0 | 1 | 2;
 
 class NumberUtils{
 	constructor(db: Base){
@@ -9,9 +13,9 @@ class NumberUtils{
 	}
 	db: Base = null;
 
-	add(key: key, value: number): number {
-		if(typeof value !== 'number' || isNaN(value)){
-			throw new Error('\'value\' must be a number');
+	add(key: string, Value: number): number {
+		if(typeof Value !== 'number' || isNaN(Value)){
+			throw new Error('\'Value\' must be a number');
 		}
 		let num = this.db.get(key);
 
@@ -21,15 +25,15 @@ class NumberUtils{
 			throw new Error(`data stored in the key '${key}' is not an number`);
 		}
 
-		num += value;
+		num += Value;
 
-		this.db.set(key: key, num);
+		this.db.set(key: string, num);
 
 		return num;
 	}
 
-	subtract(key: key, value: number): number {
-		return this.add(key: key, -value);
+	subtract(key: string, Value: number): number {
+		return this.add(key: string, -Value);
 	}
 }
 
@@ -39,7 +43,7 @@ class ArrayUtils{
 	}
 	db: Base = null;
 
-	_getArray(key: key): value[] {
+	_getArray(key: string): Value[] {
 		const arr = this.db.get(key);
 
 		if(!Array.isArray(arr)){
@@ -49,27 +53,35 @@ class ArrayUtils{
 		return arr;
 	}
 
-	push(key: key, ...values: value[]): number {
+	push(key: string, ...values: Value[]): Value[] {
 		let arr = this.db.get(key);
 
 		if(typeof arr === 'undefined' || arr === null){
 			arr = values;
 		}else{
 			if(!Array.isArray(arr)){
-				throw new Error(`value stored in '${key}' is not an array`);
+				throw new Error(`Value stored in '${key}' is not an array`);
 			}
 			arr.push(...values);
 		}
 
-		this.db.set(key: key, arr);
+		this.db.set(key, arr);
 
 		return arr;
 	}
 
-	extract(key: key, index: number | string | function): value {
+	extract(
+		key: string,
+		index: number | string | (
+			(value: JSONValue, index: number, obj: JSONValue[]) => unknown
+		)
+	): Value {
 		const arr = this.db.get(key);
 
 		if(typeof arr === 'undefined') return;
+		if(!Array.isArray(arr)){
+			throw new Error(`data stored in the key '${key}' is not an array`);
+		}
 
 		if(typeof index === 'function'){
 			index = arr.findIndex(index);
@@ -82,75 +94,99 @@ class ArrayUtils{
 		}
 		if(index === -1) return;
 
-		const [value] = arr.splice(index, 1);
+		const [Value] = arr.splice(index, 1);
 
-		this.db.set(key: key, arr);
+		this.db.set(key, arr);
 
-		return value;
+		return Value;
 	}
 
 	// from here methods throw an error if the array does not exists
 
-	splice(key: key, start: number, deleteCount: number, ...items: value[]){
+	splice(key: string, start: number, deleteCount: number, ...items: Value[]){
 		const arr = this._getArray(key);
 		const values = arr.splice(start, deleteCount, ...items);
 
-		this.db.set(key: key, arr);
+		this.db.set(key, arr);
 
 		return values;
 	}
 
-	random(key: key): value {
+	random(key: string): Value {
 		const arr = this._getArray(key);
 		return arr[Math.floor(Math.random() * arr.length)];
 	}
 
 	// from here methods throw an error if the array does not exists
 
-	includes(key: key, searchElement: any, fromIndex?: number): boolean {
+	includes(key: string, searchElement: any, fromIndex?: number): boolean {
 		return this._getArray(key).includes(searchElement, fromIndex);
 	}
 
-	sort(key: key, compareFunction){
-		return this._getArray(key).sort(compareFunction);
+	sort(key: string, compareFn?: (a: Value, b: Value) => number): Value[] {
+		return this._getArray(key).sort(compareFn);
 	}
 
 	reduce(
-        key: key,
-        callback: (previousValue: any, currentValue: value, currentIndex: number, array: any[]) => any,
+        key: string,
+        callback: (),
         initialValue: any
-    ): any{
+    ): any {
 		return this._getArray(key).reduce(callback, initialValue);
 	}
 
-	find(key: key, callback, thisArg?: any){
+	find(
+		key: string,
+		callback: (),
+		thisArg?: any
+	){
 		return this._getArray(key).find(callback, thisArg);
 	}
 
-	findIndex(key: key, callback, thisArg?: any){
+	findIndex(
+		key: string,
+		callback: (),
+		thisArg?: any
+	){
 		return this._getArray(key).findIndex(callback, thisArg);
 	}
 
-	filter(key: key, callback, thisArg?: any){
+	filter(
+		key: string,
+		callback: (),
+		thisArg?: any
+	){
 		return this._getArray(key).filter(callback, thisArg);
 	}
 
-	map(key: key, callback, thisArg?: any){
+	map(
+		key: string,
+		callback: (),
+		thisArg?: any
+	){
 		return this._getArray(key).map(callback, thisArg);
 	}
 
-	some(key: key, callback, thisArg?: any){
+	some(
+		key: string,
+		callback: (),
+		thisArg?: any
+	){
 		return this._getArray(key).some(callback, thisArg);
 	}
 
-	every(key: key, callback, thisArg?: any){
+	every(
+		key: string,
+		callback: (),
+		thisArg?: any
+	){
 		return this._getArray(key).every(callback, thisArg);
 	}
 }
 
 const regex = /\[(.*?)\]|[^.[]+/g;
-const obj = {
-	get(obj, props){
+export const obj = {
+	get(obj: Value, props: string[]){
 		if(props.length === 0){
 			return obj;
 		}
@@ -163,7 +199,7 @@ const obj = {
 			return acc[prop];
 		}, obj);
 	},
-	set(obj, props, value = null){
+	set(obj, props: string[], value: Value = null){
 		if(props.length === 0){
 			return value;
 		}
@@ -219,78 +255,44 @@ const obj = {
 	},
 };
 
-type Options = {
-	cacheType?: 0 | 1 | 2;
-	check?: boolean;
+export type RawOptions = {
+	cacheType?: cacheTypes;
 	path?: string;
+	check?: boolean;
 	name?: string;
-} | undefined;
+} | string;
 
-abstract class Base{
-	constructor(options: Options){
-		options = parseOptions(options);
-
-		Object.assign(this, {
-			_cacheType: options.cacheType,
-			array: new ArrayUtils(this),
-			number: new NumberUtils(this),
-		});
-
-		// if(this._cacheType > 0) this._cache = this.data;
+export default abstract class Base{
+	constructor(){
+		this.array = new ArrayUtils(this);
+		this.number = new NumberUtils(this);
 	}
 	_cache = {};
 	_cacheType: cacheTypes = 0;
-	path: string = null;
-	check = false;
 
-	abstract get data(): Record<string, value>;
+	abstract get data(): Record<string, Value>;
 	get keys(): string[] {
 		return Object.keys(this.data);
 	}
-	get values(): value[] {
+	get values(): Value[] {
 		return Object.values(this.data);
 	}
-	get entries(): [string, value][] {
+	get entries(): [string, Value][] {
 		return Object.entries(this.data);
 	}
 
-	abstract get(key: key): value;
-	abstract set(key: key, value: value): void;
-	abstract delete(key: key): void;
+	abstract get(key: string): Value;
+	abstract set(key: string, value: Value): void;
+	abstract delete(key: string): void;
 	abstract clear(): void;
 
-	array: NumberUtils = null;
-	number: ArrayUtils = null;
+	array: ArrayUtils = null;
+	number: NumberUtils = null;
 
 	toJSON(indentation: string = null): string {
 		return JSON.stringify(this.data, null, indentation);
 	}
 }
-
-export default Base;
-export { key, value, Options, obj }
-
-function parseOptions(options: Options = {}){
-	if(typeof options !== 'object'){
-		throw new Error('the database options should be an object or a string with the path');
-	}
-
-	const { cacheType = 0, check = false, path } = options;
-
-	if(typeof cacheType !== 'number' || isNaN(cacheType)){
-		throw new Error('\'cacheType\' should be a number between 0 and 2');
-	}else if(typeof check !== 'boolean'){
-		throw new Error('\'check\' should be a boolean value');
-	}
-
-	if(path && typeof path !== 'string'){
-		throw new Error('database \'path\' must be a string');
-	}
-
-	return { cacheType, path, check };
-}
-
-
 
 /*
 database

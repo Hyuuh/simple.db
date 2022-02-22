@@ -1,9 +1,17 @@
+import Base, { RawOptions, Value, obj, cacheTypes } from './base';
 import * as fs from 'fs';
-import Base, { Options, value, key, obj } from './base';
 
-class JSONDatabase extends Base{
-	constructor(options: Options){
-		super(options);
+interface Options {
+	cacheType: cacheTypes;
+	path: string;
+	check: boolean;
+}
+
+export default class extends Base{
+	constructor(options?: RawOptions){
+		super();
+
+		options = parseOptions(options);
 
 		if(!fs.existsSync(options.path)){
 			fs.writeFileSync(options.path, '{}');
@@ -13,8 +21,10 @@ class JSONDatabase extends Base{
 			this._cache = JSONRead(this.path);
 		}
 	}
+	path: string = null;
+	check = false;
 
-	get data(): object {
+	get data(): Record<string, Value> {
 		switch(this._cacheType){
 			case 0:
 				return JSONRead(this.path);
@@ -26,10 +36,10 @@ class JSONDatabase extends Base{
 				throw new Error('\'cacheType\' must be a number between 0 and 2');
 		}
 	}
-	get(key: key): value {
+	get(key: string): Value {
 		return obj.get(this.data, obj.parseKey(key));
 	}
-	set(key: key, value: value): void{
+	set(key: string, value: Value): void {
 		const data = obj.set(this.data, obj.parseKey(key), value);
 
 		if(this._cacheType !== 2){
@@ -38,7 +48,7 @@ class JSONDatabase extends Base{
 
 		JSONWrite(this.path, data);
 	}
-	delete(key: key): void {
+	delete(key: string): void {
 		obj.delete(this.data, obj.parseKey(key));
 	}
 	clear(): void {
@@ -47,23 +57,23 @@ class JSONDatabase extends Base{
 	}
 }
 
-export default JSONDatabase;
+function JSONWrite(path: string, data: Value[] | Record<string, Value>, check = false){
+	let stringifiedData;
 
-function JSONWrite(path: string, data, check = false){
 	try{
-		data = JSON.stringify(data, null, '\t');
+		stringifiedData = JSON.stringify(data, null, '\t');
 	}catch(e){
 		throw new Error('Circular structures cannot be stored');
 	}
 
 	try{
-		fs.writeFileSync(path, data);
+		fs.writeFileSync(path, stringifiedData);
 	}catch(e){}
 
 	if(check){
 		const dataInJSON = fs.readFileSync(path, 'utf-8');
 
-		if(dataInJSON !== data){
+		if(dataInJSON !== stringifiedData){
 			const path2 = `../backup-${Date.now()}.json`;
 
 			JSONWrite(path2, data);
@@ -72,8 +82,8 @@ function JSONWrite(path: string, data, check = false){
 	}
 }
 
-function JSONRead(path: string){
-	let data = {};
+function JSONRead(path: string): Record<string, Value> {
+	let data;
 
 	try{
 		data = fs.readFileSync(path, 'utf-8');
@@ -82,11 +92,35 @@ function JSONRead(path: string){
 	}
 
 	try{
-		// @ts-ignore
 		data = JSON.parse(data);
 	}catch(e){
 		throw new Error(`Error parsing JSON in '${path}'`);
 	}
 
 	return data;
+}
+
+const DEFAULT_OPTIONS = {
+	cacheType: 1,
+	path: './simple-db.json',
+	check: false
+};
+
+function parseOptions(options: RawOptions = {}): Options {
+	if(typeof options === 'string') options = { path: options };
+	if(typeof options !== 'object'){
+		throw new Error('the database options should be an object or a string with the path');
+	}
+
+	options = Object.assign({}, DEFAULT_OPTIONS, options);
+
+	if(typeof options.path !== 'string'){
+		throw new Error('the database path should be a string');
+	}else if(!Number.isFinite(options.cacheType)){
+		throw new Error("'cacheType' should be a number between 0 and 2");
+	}else if(typeof options.check !== 'boolean'){
+		throw new Error("'check' should be a boolean value");
+	}
+
+	return options as Options;
 }
