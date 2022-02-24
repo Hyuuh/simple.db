@@ -1,60 +1,11 @@
 import * as BETTER_SQLITE3 from 'better-sqlite3';
 import { Database, Options } from 'better-sqlite3';
+import { Base, column, ColumnsManager, TransactionManager } from './utils';
 
-class Base{
-	constructor(db: Database){ this.db = db; }
-	protected readonly db: Database;
-}
+type value = number | string | bigint | Buffer | null;
 
-/*
-column-constraint
-1. 
-2. PRIMARY KEY (ASC|DESC)? (conflict-clause) AUTOINCREMENT?
-3. NOT NULL (conflict-clause)?
-4. UNIQUE (conflict-clause)?
-5. DEFAULT (value)
-
-conflict-clause
-1.
-2. ON CONFLICT (ROLLBACK|ABORT|FAIL|IGNORE|REPLACE)
-*/
-
-type column = string | {
-	name: string,
-	type: string,
-}
-
-class ColumnsManager extends Base{
-	constructor(db: Database, tableName: string){
-		super(db);
-		this.tableName = tableName;
-	}
-	tableName: string;
-
-	add(name: string): void {
-		this.db.prepare(`ALTER TABLE [${this.tableName}] ADD COLUMN ${name} BLOB`).run();
-	}
-
-	remove(name: string): void {
-		this.db.prepare(`ALTER TABLE [${this.tableName}] DROP COLUMN ${name}`).run();
-	}
-
-	rename(oldName: string, newName: string): void {
-		this.db.prepare(`ALTER TABLE [${this.tableName}] RENAME COLUMN ${oldName} TO ${newName}`).run();
-	}
-
-	static parseOne(column: column): string {
-		if(typeof column === 'string') return column;
-
-		return '';
-	}
-
-	static parse(columns: column[] | string): string {
-		if(typeof columns === 'string') return columns;
-
-		return '';
-	}
-}
+type condition = string | Record<string, value>;
+type values = Record<string, value>;
 
 class Table extends Base{
 	constructor(db: Database, name: string){
@@ -64,33 +15,48 @@ class Table extends Base{
 	}
 	name: string;
 	columns: ColumnsManager;
-}
 
-class TransactionManager extends Base{
-	// https://www.sqlite.org/lang_transaction.html
-	// https://www.sqlite.org/lang_savepoint.html
-	begin(): void {
-		this.db.prepare('BEGIN TRANSACTION').run();
+	static prepareValues(values: values): string[] {
+		return Object.keys(values).map(key => `[${key}] = ${values[key]}`);
 	}
 
-	commit(): void {
-		this.db.prepare('COMMIT TRANSACTION').run();
+	static prepareCondition(condition: condition): string {
+		if(typeof condition === 'string') return condition;
+
+		return Table.prepareValues(condition).join(' AND ');
 	}
 
-	savepoint(name?: string): void {
-		this.db.prepare(`SAVEPOINT ${name}`).run();
-	}
-
-	deleteSavepoint(name?: string): void {
-		this.db.prepare(`RELEASE SAVEPOINT ${name}`).run();
-	}
-
-	rollback(name?: string): void {
-		if(name){
-			this.db.prepare(`ROLLBACK TRANSACTION TO SAVEPOINT ${name}`).run();
+	select(condition: condition = ''): value[] {
+		if(condition){
+			return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${
+				Table.prepareCondition(condition)
+			}`).all();
 		}else{
-			this.db.prepare('ROLLBACK TRANSACTION').run();
+			return this.db.prepare(`SELECT * FROM [${this.name}]`).all();
 		}
+	}
+
+	insert(values: value[] | values): void {
+		if(Array.isArray(values)){
+			this.db.prepare(`INSERT INTO [${this.name}] VALUES (${
+				values.map(() => '?').join(', ')
+			})`).run(values);
+		}else{
+			const keys = Object.keys(values);
+			this.db.prepare(`INSERT INTO [${this.name}] (${
+				keys.join(', ')
+			}) VALUES (${
+				keys.map(key => `@${key}`).join(', ')
+			})`).run(values);
+		}
+	}
+
+	update(condition: condition, newValues: values): void {
+		this.db.prepare(`UPDATE [${this.name}] SET ${
+			Table.prepareValues(newValues).join(', ')
+		} WHERE ${
+			Table.prepareCondition(condition)
+		}`).run(newValues);
 	}
 }
 
@@ -125,7 +91,7 @@ class TablesManager extends Base{
 	}
 }
 
-export default class extends Base{
+export default class Main extends Base{
 	constructor(path: string, options?: Options){
 		super(new BETTER_SQLITE3(path, options));
 		this.transaction = new TransactionManager(this.db);
@@ -139,7 +105,8 @@ export default class extends Base{
 		this.pragma('optimize');
 		this.run('VACUUM');
 	}
-	
+
+	// https://www.sqlite.org/pragma.html
 	pragma(str: string): unknown {
 		return this.db.pragma(str);
 	}

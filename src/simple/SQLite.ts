@@ -1,5 +1,4 @@
-import Base, { RawOptions, Data, Value, cacheTypes } from './base';
-import obj from './object'
+import Base, { RawOptions, Data, Value, cacheTypes, obj } from './base';
 import * as BETTER_SQLITE3 from 'better-sqlite3';
 
 export default class extends Base{
@@ -56,13 +55,20 @@ export default class extends Base{
 		}
 	}
 	get(key: string): Value {
+		if(this._cacheType !== 0){
+			return obj.get(this._cache, obj.parseKey(key));
+		}
 		const [k, ...props] = obj.parseKey(key);
+		
 		const entry = this.statements.get.get(k);
 		if(!entry) return;
 
 		return obj.get(JSON.parse(entry.value), props);
 	}
 	set(key: string, value: Value): void {
+		if(this._cacheType !== 0){
+			return obj.get(this._cache, obj.parseKey(key));
+		}
 		value = JSON.stringify(value);
 
 		this.statements.set.run(key, JSON.stringify(value));
