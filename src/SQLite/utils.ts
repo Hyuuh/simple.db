@@ -14,8 +14,6 @@ type columnConstraint = '' |
 	`UNIQUE${conflictClause}` |
 	`DEFAULT ${number | string}`;
 
-
-
 export type column = string | [string, columnConstraint, DataType?];
 
 export class ColumnsManager extends Base{

@@ -3,9 +3,8 @@ import { Database, Options } from 'better-sqlite3';
 import { Base, column, ColumnsManager, TransactionManager } from './utils';
 
 type value = number | string | bigint | Buffer | null;
-
-type condition = string | Record<string, value>;
-type values = Record<string, value>;
+type valuesObj = Record<string, value>;
+type condition = string | valuesObj;
 
 class Table extends Base{
 	constructor(db: Database, name: string){
@@ -16,8 +15,12 @@ class Table extends Base{
 	name: string;
 	columns: ColumnsManager;
 
-	static prepareValues(values: values): string[] {
-		return Object.keys(values).map(key => `[${key}] = ${values[key]}`);
+	static prepareValues(values: valuesObj): string[] {
+		const keys = Object.keys(values);
+
+		if(keys.length === 0) throw new Error('No values supplied');
+
+		return keys.map(key => `[${key}] = ${values[key]}`);
 	}
 
 	static prepareCondition(condition: condition): string {
@@ -26,17 +29,17 @@ class Table extends Base{
 		return Table.prepareValues(condition).join(' AND ');
 	}
 
-	select(condition: condition = ''): value[] {
-		if(condition){
+	select(condition: condition = ''): valuesObj[] {
+		if(typeof condition === 'string'){
+			return this.db.prepare(`SELECT * FROM [${this.name}]`).all();
+		}else{
 			return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${
 				Table.prepareCondition(condition)
 			}`).all();
-		}else{
-			return this.db.prepare(`SELECT * FROM [${this.name}]`).all();
 		}
 	}
 
-	insert(values: value[] | values): void {
+	insert(values: value[] | valuesObj): void {
 		if(Array.isArray(values)){
 			this.db.prepare(`INSERT INTO [${this.name}] VALUES (${
 				values.map(() => '?').join(', ')
@@ -51,12 +54,36 @@ class Table extends Base{
 		}
 	}
 
-	update(condition: condition, newValues: values): void {
+	update(condition: condition, newValues: valuesObj): void {
 		this.db.prepare(`UPDATE [${this.name}] SET ${
 			Table.prepareValues(newValues).join(', ')
 		} WHERE ${
 			Table.prepareCondition(condition)
 		}`).run(newValues);
+	}
+
+	replace(condition: condition, values: value[] | valuesObj){
+		if(Array.isArray(values)){
+			this.db.prepare(`REPLACE INTO [${this.name}] VALUES (${
+				values.map(() => '?').join(', ')
+			}) WHERE ${
+				Table.prepareCondition(condition)
+			}`).run(values);
+		}else{
+			this.db.prepare(`REPLACE INTO [${this.name}] (${
+				Object.keys(values).join(', ')
+			}) VALUES (${
+				Object.keys(values).map(key => `@${key}`).join(', ')
+			}) WHERE ${
+				Table.prepareCondition(condition)
+			}`).run(values);
+		}
+	}
+
+	delete(condition: condition): void {
+		this.db.prepare(`DELETE FROM [${this.name}] WHERE ${
+			Table.prepareCondition(condition)
+		}`).run();
 	}
 }
 
