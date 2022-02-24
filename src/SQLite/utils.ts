@@ -14,9 +14,9 @@ type columnConstraint = '' |
 	`UNIQUE${conflictClause}` |
 	`DEFAULT ${number | string}`;
 
-export type column = string | [string, columnConstraint, DataType?];
+type column = string | [string, columnConstraint, DataType?];
 
-export class ColumnsManager extends Base{
+class ColumnsManager extends Base{
 	constructor(db: Database, tableName: string){
 		super(db);
 		this.tableName = tableName;
@@ -50,6 +50,9 @@ export class ColumnsManager extends Base{
 		return columns.map(ColumnsManager.parseOne).join(', ');
 	}
 }
+
+const a: number = 1;
+export { a, ColumnsManager, type column };
 
 export class TransactionManager extends Base{
 	// https://www.sqlite.org/lang_transaction.html

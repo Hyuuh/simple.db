@@ -89,6 +89,7 @@ function JSONWrite(path: string, data: Data, check = false){
 
 	try{
 		fs.writeFileSync(path, stringifiedData);
+	// eslint-disable-next-line no-empty
 	}catch(e){}
 
 	if(check){

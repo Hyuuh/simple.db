@@ -8,30 +8,32 @@ db.optimize();
 
 const table = db.tables.create('test', [
 	'a',
-	'b',
-	['c', 'PRIMARY KEY ASC'],
+	['b', 'PRIMARY KEY ASC'],
+	'c',
 	['d', 'NOT NULL']
 ]);
 
 const values = [
-	{ a: 1, b: 2, c: 3, d: 4 },
-	{ a: 1, b: 2, c: 1, d: 5 },
-	{ a: 1, b: 2, c: 2, d: 5 }
+	{ a: 'ABC', b: 3, c: 4, d: 0 },
+	{ a: 'DEF', b: 1, c: 5, d: Buffer.from([0xFF, 0XFF]) },
+	{ a: null , b: 2, c: 5, d: -3}
 ];
 
-for(const value of values) table.insert(value);
+for(const value of values){
+	table.insert(value);
+}
 
-deepStrictEqual(table.select(), values);
-deepStrictEqual(table.select({ d: 5 }), values.filter(x => x.d === 5));
+console.log(table.select({ c: 5 }));
 
-table.update({ d: 4 }, { d: 6 });
-values.find(x => x.d === 4).d = 6;
+table.update({ c: 5 }, { d: 300 });
 
-deepStrictEqual(table.select('d > 3'), values.filter(x => x.d > 3));
-deepStrictEqual(table.select(), values);
+console.log(table.select())
 
-db.optimize();
-console.log(table.select(), values)
+console.log(table.select('b > 2'))
 
+table.columns.add('f');
+table.columns.rename('f', 'g');
+console.log(table.get())
+table.columns.remove('g');
 
 // https://www.npmjs.com/package/tslib

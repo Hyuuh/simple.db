@@ -15,9 +15,9 @@ class NumberUtils{
 	}
 	db: Base = null;
 
-	add(key: string, Value: number): number {
-		if(typeof Value !== 'number' || isNaN(Value)){
-			throw new Error('\'Value\' must be a number');
+	add(key: string, value: number): number {
+		if(typeof value !== 'number' || isNaN(value)){
+			throw new Error("'value' must be a number");
 		}
 		let num = this.db.get(key);
 
@@ -27,15 +27,15 @@ class NumberUtils{
 			throw new Error(`data stored in the key '${key}' is not an number`);
 		}
 
-		num += Value;
+		num += value;
 
 		this.db.set(key, num);
 
 		return num;
 	}
 
-	subtract(key: string, Value: number): number {
-		return this.add(key, -Value);
+	subtract(key: string, value: number): number {
+		return this.add(key, -value);
 	}
 }
 

@@ -29,6 +29,16 @@ class Table extends Base{
 		return Table.prepareValues(condition).join(' AND ');
 	}
 
+	get(condition: condition = ''): valuesObj {
+		if(typeof condition === 'string'){
+			return this.db.prepare(`SELECT * FROM [${this.name}]`).get();
+		}else{
+			return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${
+				Table.prepareCondition(condition)
+			}`).get();
+		}
+	}
+
 	select(condition: condition = ''): valuesObj[] {
 		if(typeof condition === 'string'){
 			return this.db.prepare(`SELECT * FROM [${this.name}]`).all();
@@ -95,6 +105,7 @@ class TablesManager extends Base{
 
 	create(name: string, columns: column[] | string): Table {
 		if(name in this._tables) return this._tables[name];
+
 		this.db.prepare(`CREATE TABLE IF NOT EXISTS [${name}] (${
 			ColumnsManager.parse(columns)
 		})`).run();
