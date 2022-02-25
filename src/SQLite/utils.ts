@@ -8,14 +8,14 @@ export class Base{
 	protected readonly db: Database;
 }
 
-type DataType = 'INTEGER' | 'NUMERIC' | 'REAL' | 'TEXT' | 'BLOB';
-type conflictClause = '' | ` ON CONFLICT ${'ROLLBACK' | 'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE'}`;
+type DataType = 'BLOB' | 'INTEGER' | 'NUMERIC' | 'REAL' | 'TEXT';
+type conflictClause = '' | ` ON CONFLICT ${'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE' | 'ROLLBACK'}`;
 
 type columnConstraint = '' |
-	`PRIMARY KEY${' ASC' |' DESC' | ''}${conflictClause}${' AUTOINCREMENT' | ''}` |
+	`DEFAULT ${number | string}` |
 	`NOT NULL${conflictClause}` |
-	`UNIQUE${conflictClause}` |
-	`DEFAULT ${number | string}`;
+	`PRIMARY KEY${' ASC' |' DESC' | ''}${conflictClause}${' AUTOINCREMENT' | ''}` |
+	`UNIQUE${conflictClause}`;
 
 type column = string | [string, columnConstraint, DataType?];
 
@@ -61,23 +61,31 @@ export { a, ColumnsManager, type column };
 export class TransactionManager extends Base{
 	// https://www.sqlite.org/lang_transaction.html
 	// https://www.sqlite.org/lang_savepoint.html
-	public begin(): void{
+	public begin(): void {
 		this.db.prepare('BEGIN TRANSACTION').run();
 	}
 
-	public commit(): void{
+	public commit(): void {
 		this.db.prepare('COMMIT TRANSACTION').run();
 	}
 
-	public savepoint(name?: string): void{
-		this.db.prepare(`SAVEPOINT ${name}`).run();
+	public savepoint(name?: string): void {
+		if(name){
+			this.db.prepare(`SAVEPOINT ${name}`).run();
+		}else{
+			this.db.prepare('SAVEPOINT').run();
+		}
 	}
 
-	public deleteSavepoint(name?: string): void{
-		this.db.prepare(`RELEASE SAVEPOINT ${name}`).run();
+	public deleteSavepoint(name?: string): void {
+		if(name){
+			this.db.prepare(`RELEASE SAVEPOINT ${name}`).run();
+		}else{
+			this.db.prepare('RELEASE SAVEPOINT').run();
+		}
 	}
 
-	public rollback(name?: string): void{
+	public rollback(name?: string): void {
 		if(name){
 			this.db.prepare(`ROLLBACK TRANSACTION TO SAVEPOINT ${name}`).run();
 		}else{

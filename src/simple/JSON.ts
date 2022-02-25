@@ -6,10 +6,11 @@ export default class extends Base{
 	constructor(options?: RawOptions){
 		super();
 
-		options = parseOptions(options);
+		const opts = parseOptions(options);
 
-		if(!fs.existsSync(options.path)){
-			fs.writeFileSync(options.path, '{}');
+		Object.assign(this, opts);
+		if(!fs.existsSync(opts.path)){
+			fs.writeFileSync(opts.path, '{}');
 		}
 
 		if(this._cacheType !== 0){
@@ -17,7 +18,7 @@ export default class extends Base{
 		}
 	}
 
-	private readonly path: string = null;
+	private readonly path: string;
 	private readonly check = false;
 
 	public get data(): Data {
@@ -25,7 +26,7 @@ export default class extends Base{
 			case 0: return readJSON(this.path);
 			case 1: return objUtil.clone(this._cache) as Data;
 			case 2: return this._cache;
-			default:throw new Error("'cacheType' must be a number between 0 and 2");
+			default: throw new Error("'cacheType' must be a number between 0 and 2");
 		}
 	}
 
@@ -65,7 +66,7 @@ const DEFAULT_OPTIONS = {
 	check: false,
 };
 
-function parseOptions(options: RawOptions = {}): Options{
+function parseOptions(options: RawOptions = {}): Options {
 	if(typeof options === 'string') options = { path: options };
 	if(typeof options !== 'object'){
 		throw new Error('the database options should be an object or a string with the path');

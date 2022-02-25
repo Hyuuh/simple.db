@@ -3,9 +3,11 @@ import type { Database, Options } from 'better-sqlite3';
 import type { column } from './utils';
 import { Base, ColumnsManager, TransactionManager } from './utils';
 
-type value = number | string | bigint | Buffer | null;
-type valuesObj = Record<string, value>;
-type condition = string | valuesObj;
+type value = Buffer | bigint | number | string | null;
+interface valuesObj {
+	[key: string]: value
+}
+type condition = valuesObj | string;
 
 class Table extends Base{
 	constructor(db: Database, name: string){
@@ -98,9 +100,11 @@ class Table extends Base{
 }
 
 class TablesManager extends Base{
-	public list: Record<string, Table> = {};
+	public list: {
+		[key: string]: Table
+	} = {};
 
-	public create(name: string, columns: column[] | string): Table {
+	public create(name: string, columns: column[] | string): void {
 		if(name in this.list) return;
 
 		this.db.prepare(`CREATE TABLE IF NOT EXISTS [${name}] (${

@@ -1,26 +1,22 @@
-export type Value = string | number | boolean | Data;
+export type Value = Data | boolean | number | string | null | undefined;
 export interface DataObj {
-	[key: string | number]: Value;
+	[key: number | string]: Value;
 }
 export type Data = DataObj | Value[];
 
-type typeName = value;
-
-const variable: type = value;
-
 export type cacheTypes = 0 | 1 | 2;
-export type RawOptions = {
+export type RawOptions = string | {
 	cacheType?: cacheTypes;
 	path?: string;
 	check?: boolean;
 	name?: string;
-} | string;
+};
 
 class NumberUtils{
 	constructor(db: Base){
 		this.db = db;
 	}
-	private readonly db: Base = null;
+	private readonly db: Base;
 
 	public add(key: string, value: number): number{
 		if(typeof value !== 'number' || isNaN(value)){
@@ -51,7 +47,7 @@ class ArrayUtils{
 		this.db = db;
 	}
 
-	private readonly db: Base = null;
+	private readonly db: Base;
 
 	public _getArray(key: string): Value[]{
 		const arr = this.db.get(key);
@@ -85,7 +81,7 @@ class ArrayUtils{
 		index: number | string | (
 			(value: Value, index: number, obj: Value[]) => unknown
 		)
-	): Value{
+	): Value {
 		const arr = this.db.get(key);
 
 		if(typeof arr === 'undefined') return;
@@ -118,7 +114,7 @@ class ArrayUtils{
 		start: number,
 		deleteCount: number,
 		...items: Value[]
-	){
+	): Value[] {
 		const arr = this._getArray(key);
 		const values = arr.splice(start, deleteCount, ...items);
 
@@ -138,7 +134,7 @@ class ArrayUtils{
 		key: string,
 		searchElement: Value,
 		fromIndex?: number
-	): boolean{
+	): boolean {
 		return this._getArray(key).includes(searchElement, fromIndex);
 	}
 
@@ -146,7 +142,7 @@ class ArrayUtils{
 		key: string,
 		callback: (value: Value, index: number, obj: Value[]) => unknown,
 		thisArg?: unknown
-	): Value{
+	): Value {
 		return this._getArray(key).find(callback, thisArg);
 	}
 
@@ -211,29 +207,29 @@ export default abstract class Base{
 		this.array = new ArrayUtils(this);
 		this.number = new NumberUtils(this);
 	}
-	protected _cache: Data = null;
+	protected _cache: Data;
 	protected _cacheType: cacheTypes = 0;
 
-	abstract get data(): Data;
-	public get keys(): string[]{
+	public abstract get data(): Data;
+	public get keys(): string[] {
 		return Object.keys(this.data);
 	}
-	public get values(): Value[]{
+	public get values(): Value[] {
 		return Object.values(this.data);
 	}
-	public get entries(): Array<[string, Value]>{
+	public get entries(): Array<[string, Value]> {
 		return Object.entries(this.data);
 	}
 
-	abstract get(key: string): Value;
-	abstract set(key: string, value: Value): void;
-	abstract delete(key: string): void;
-	abstract clear(): void;
+	public abstract get(key: string): Value;
+	public abstract set(key: string, value: Value): void;
+	public abstract delete(key: string): void;
+	public abstract clear(): void;
 
-	public array: ArrayUtils = null;
-	public number: NumberUtils = null;
+	public array: ArrayUtils;
+	public number: NumberUtils;
 
-	public toJSON(indentation: string = null): string{
+	public toJSON(indentation = ''): string{
 		return JSON.stringify(this.data, null, indentation);
 	}
 }
@@ -287,12 +283,12 @@ export const objUtil = {
 		return obj;
 	},
 	set(obj: Value, props: string[], value: Value = null): Value {
-		if(props.length === 0) return;
+		if(props.length === 0) return obj;
 		if(typeof obj !== 'object' || obj === null){
 			throw new Error(`Value at ${props.join('.')} is not an object`);
 		}
 
-		const last = props.pop();
+		const last = props.pop() as string;
 
 		for(const prop of props){
 			if(prop in obj){
@@ -317,8 +313,11 @@ export const objUtil = {
 
 		return obj;
 	},
-	delete(obj: Value, props: string[]): void{
-		const key = props.pop();
+	delete(obj: Value, props: string[]): void {
+		if(props.length === 0){
+			throw new Error('Invalid key');
+		}
+		const key = props.pop() as string;
 		obj = objUtil.get(obj, props);
 
 		if(typeof obj !== 'object' || obj === null) return;

@@ -10,36 +10,38 @@ interface entry {
 export default class extends Base{
 	constructor(options?: RawOptions){
 		super();
-		options = parseOptions(options);
+		const opts = parseOptions(options);
 
 		let db = null;
 		try{
-			db = new BETTER_SQLITE3(options.path);
+			db = new BETTER_SQLITE3(opts.path);
 		}catch(e){
 			throw new Error("introduced 'path' is not valid");
 		}
 
-		db.prepare(`CREATE TABLE IF NOT EXISTS [${options.name}](key TEXT PRIMARY KEY, value TEXT)`).run();
+		db.prepare(`CREATE TABLE IF NOT EXISTS [${opts.name}](key TEXT PRIMARY KEY, value TEXT)`).run();
 
-		Object.assign(this, options);
+		Object.assign(this, opts);
 		this.statements = {
-			set: db.prepare(`INSERT OR REPLACE INTO [${options.name}] VALUES(?, ?)`),
-			delete: db.prepare(`DELETE FROM [${options.name}] WHERE key = ?`),
-			clear: db.prepare(`DELETE FROM [${options.name}]`),
-			getAll: db.prepare(`SELECT * FROM [${options.name}]`),
-			get: db.prepare(`SELECT * FROM [${options.name}] WHERE key = ?`),
+			set: db.prepare(`INSERT OR REPLACE INTO [${opts.name}] VALUES(?, ?)`),
+			delete: db.prepare(`DELETE FROM [${opts.name}] WHERE key = ?`),
+			clear: db.prepare(`DELETE FROM [${opts.name}]`),
+			getAll: db.prepare(`SELECT * FROM [${opts.name}]`),
+			get: db.prepare(`SELECT * FROM [${opts.name}] WHERE key = ?`),
 		};
 		if(this._cacheType !== 0){
 			this._cache = this._getAll();
 		}
 	}
-	protected _cache: DataObj = null;
+	protected _cache: DataObj;
 
-	private readonly statements: Record<string, BETTER_SQLITE3.Statement> = null;
+	private readonly statements: {
+		[key: string]: BETTER_SQLITE3.Statement
+	};
 
 	private _getAll(): DataObj {
 		return this.statements.getAll.all().reduce<DataObj>((
-			acc: Record<string, Value>,
+			acc: { [key: string]: Value },
 			{ key, value }: { key: string, value: string }
 		) => {
 			acc[key] = JSON.parse(value) as Value;

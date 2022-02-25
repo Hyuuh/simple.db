@@ -492,6 +492,26 @@ module.exports = {
 				"asyncArrow": "always"
 			}
 		],
-		
+
+		/*
+		"@typescript-eslint/no-unnecessary-condition": "error",
+		"@typescript-eslint/consistent-indexed-object-style": [
+			"error",
+			"index-signature"
+		],
+		'@typescript-eslint/consistent-type-exports': 'error',
+		"@typescript-eslint/no-confusing-void-expression": [
+			"error",
+			{ "ignoreArrowShorthand": true, "ignoreVoidOperator": true }
+		],
+		"@typescript-eslint/no-meaningless-void-operator": "error",
+		"@typescript-eslint/no-non-null-asserted-nullish-coalescing": "error",
+		"@typescript-eslint/no-unnecessary-type-constraint": "error",
+		"@typescript-eslint/no-unsafe-argument": "error",
+		"@typescript-eslint/non-nullable-type-assertion-style": "error",
+		"@typescript-eslint/prefer-return-this-type": "error",
+		"@typescript-eslint/sort-type-union-intersection-members": "error",
+		*/
+
 	},
 };
