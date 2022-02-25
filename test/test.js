@@ -37,3 +37,16 @@ console.log(table.get())
 table.columns.remove('g');
 
 // https://www.npmjs.com/package/tslib
+
+function func(){
+	// ...
+}
+
+if(algo) func();
+
+
+function func(){
+	if(!algo) return;
+
+	// ...
+}

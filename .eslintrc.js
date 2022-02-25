@@ -366,6 +366,9 @@ module.exports = {
 					"extends": {
 						"before": true
 					},
+					"delete": {
+						"before": true
+					},
 					"throw": {
 						"before": true
 					},
@@ -489,5 +492,6 @@ module.exports = {
 				"asyncArrow": "always"
 			}
 		],
+		
 	},
 };

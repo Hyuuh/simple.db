@@ -30,7 +30,7 @@ export default class extends Base{
 	}
 
 	public get(key: string): Value {
-		return objUtil.get(this.data, objUtil.parseKey(key)) as Value;
+		return objUtil.get(this.data, objUtil.parseKey(key));
 	}
 
 	public set(key: string, value: Value): void{

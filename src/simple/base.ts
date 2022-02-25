@@ -1,5 +1,12 @@
 export type Value = string | number | boolean | Data;
-export type Data = { [key: string]: Value; } | Value[];
+export interface DataObj {
+	[key: string | number]: Value;
+}
+export type Data = DataObj | Value[];
+
+type typeName = value;
+
+const variable: type = value;
 
 export type cacheTypes = 0 | 1 | 2;
 export type RawOptions = {
@@ -204,7 +211,7 @@ export default abstract class Base{
 		this.array = new ArrayUtils(this);
 		this.number = new NumberUtils(this);
 	}
-	protected _cache: Data = {};
+	protected _cache: Data = null;
 	protected _cacheType: cacheTypes = 0;
 
 	abstract get data(): Data;
@@ -261,51 +268,71 @@ database
 	|--entries
 */
 
-const regex = /\[(.*?)\]|[^.[]+/g;
+const regex = /\.{2,}|^\.|\.$/; // /\[(.*?)\]|[^.[]+/g; //
 export const objUtil = {
-	get(obj: unknown, props: string[]): unknown {
+	get(obj: Value, props: string[]): Value {
 		if(props.length === 0) return obj;
 
-		return props.reduce<unknown>((acc, prop: string, i: number) => {
-			if(typeof acc !== 'object' || acc === null){
-				throw new Error(`Value at ${props.slice(0, i).join('.')} is not an object`);
-			}
-			if(!(prop in acc)) return null;
-
-			return acc[prop] as unknown;
-		}, obj);
-	},
-	set(obj: any, props: string[], value: any = null): any {
-		if(props.length === 0) return;
-
-		props.reduce((acc: any, prop: string, index: number) => {
-			if(acc == undefined) return undefined;
-
-			if(acc[prop] === undefined){
-				acc[prop] = {};
-			}
-			if(index === props.length - 1){
-				acc[prop] = value;
+		for(const prop of props){
+			if(typeof obj !== 'object' || obj === null){
+				throw new Error(`Value at ${props.join('.')} is not an object`);
 			}
 
-			return acc[prop];
-		}, obj);
+			if(prop in obj){
+				// @ts-expect-error string as a index of an array
+				obj = obj[prop] as Value;
+			}else return;
+		}
 
 		return obj;
 	},
-	delete(obj: unknown, props: string[]): void{
+	set(obj: Value, props: string[], value: Value = null): Value {
+		if(props.length === 0) return;
+		if(typeof obj !== 'object' || obj === null){
+			throw new Error(`Value at ${props.join('.')} is not an object`);
+		}
+
+		const last = props.pop();
+
+		for(const prop of props){
+			if(prop in obj){
+				// @ts-expect-error string as a index of an array
+				obj = obj[prop] as Value;
+			}else{
+				if(Array.isArray(obj)){
+					throw new Error("adding a value to an array in the 'set' method is forbidden");
+				}
+				obj = obj[prop] = {};
+			}
+
+			if(typeof obj !== 'object' || obj === null){
+				throw new Error(`Value at ${props.join('.')} is not an object`);
+			}
+		}
+
+		if(Array.isArray(obj)){
+			throw new Error("adding a value to an array in the 'set' method is forbidden");
+		}
+		obj[last] = value;
+
+		return obj;
+	},
+	delete(obj: Value, props: string[]): void{
 		const key = props.pop();
-		obj = this.get(obj, props);
+		obj = objUtil.get(obj, props);
 
-		if(obj == undefined) return;
+		if(typeof obj !== 'object' || obj === null) return;
 
+		if(Array.isArray(obj)){
+			throw new Error("deleting a value from an array in the 'delete' method is forbidden");
+		}
 		delete obj[key];
 	},
 	clone(obj: unknown): unknown {
 		try{
 			return JSON.parse(
 				JSON.stringify(obj)
-			) as unknown;
+			);
 		}catch(e){}
 	},
 	parseKey(key: string): string[]{
@@ -313,7 +340,7 @@ export const objUtil = {
 
 		if(typeof key !== 'string'){
 			throw new Error('\'key\' must be a string');
-		}else if(key.match(/\.{2,}|^\.|\.$/) || key === ''){
+		}else if(regex.test(key) || key === ''){
 			throw new Error('\'key\' is not valid');
 		}
 
@@ -330,5 +357,31 @@ function parseKey(key){
 	}
 
 	return key.split(/\.|\[(\d)\]/).filter(k => k);
+}
+
+
+function get(object, path, defaultValue) {
+  const result = object == null ? undefined : baseGet(object, path)
+  return result === undefined ? defaultValue : result
+}
+
+function baseGet(object, path) {
+  path = castPath(path, object)
+
+  let index = 0
+  const length = path.length
+
+  while (object != null && index < length) {
+    object = object[toKey(path[index++])]
+  }
+  return (index && index == length) ? object : undefined
+}
+
+function toKey(value) {
+  if (typeof value === 'string' || isSymbol(value)) {
+    return value
+  }
+  const result = `${value}`
+  return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result
 }
 */

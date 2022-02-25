@@ -100,7 +100,7 @@ class Table extends Base{
 class TablesManager extends Base{
 	public list: Record<string, Table> = {};
 
-	public create(name: string, columns: column[] | string): void {
+	public create(name: string, columns: column[] | string): Table {
 		if(name in this.list) return;
 
 		this.db.prepare(`CREATE TABLE IF NOT EXISTS [${name}] (${

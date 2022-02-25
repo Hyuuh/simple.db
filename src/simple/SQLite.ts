@@ -1,4 +1,4 @@
-import type { RawOptions, Data, Value, cacheTypes } from './base';
+import type { RawOptions, DataObj, Value, cacheTypes } from './base';
 import Base, { objUtil } from './base';
 import * as BETTER_SQLITE3 from 'better-sqlite3';
 
@@ -19,14 +19,7 @@ export default class extends Base{
 			throw new Error("introduced 'path' is not valid");
 		}
 
-		try{
-			db.prepare(`CREATE TABLE IF NOT EXISTS [${options.name}](key TEXT PRIMARY KEY, value TEXT)`).run();
-		}catch(e){
-			if(e.message === 'file is not a database'){
-				throw new Error(`file in '${options.path}' is not a valid SQLite database`);
-			}
-			throw new Error("introduced database 'name' is not valid (in SQLite)");
-		}
+		db.prepare(`CREATE TABLE IF NOT EXISTS [${options.name}](key TEXT PRIMARY KEY, value TEXT)`).run();
 
 		Object.assign(this, options);
 		this.statements = {
@@ -40,11 +33,12 @@ export default class extends Base{
 			this._cache = this._getAll();
 		}
 	}
+	protected _cache: DataObj = null;
 
 	private readonly statements: Record<string, BETTER_SQLITE3.Statement> = null;
 
-	private _getAll(): Data {
-		return this.statements.getAll.all().reduce<Data>((
+	private _getAll(): DataObj {
+		return this.statements.getAll.all().reduce<DataObj>((
 			acc: Record<string, Value>,
 			{ key, value }: { key: string, value: string }
 		) => {
@@ -54,12 +48,12 @@ export default class extends Base{
 		}, {});
 	}
 
-	public get data(): Data {
+	public get data(): DataObj {
 		switch(this._cacheType){
 			case 0: return this._getAll();
-			case 1: return objUtil.clone(this._cache) as Data;
+			case 1: return objUtil.clone(this._cache) as DataObj;
 			case 2: return this._cache;
-			default:throw new Error("'cacheType' must be a number between 0 and 2");
+			default: throw new Error("'cacheType' must be a number between 0 and 2");
 		}
 	}
 
@@ -67,14 +61,16 @@ export default class extends Base{
 		if(this._cacheType === 0){
 			const entry = this.statements.get.get(key) as entry;
 			if(!entry) return;
-	
+
 			return JSON.parse(entry.value) as Value;
 		}
+
+		return this._cache[key];
 	}
 	public get(key: string): Value {
 		const [k, ...props] = objUtil.parseKey(key);
 
-
+		return objUtil.get(this._get(k), props);
 	}
 
 	private _set(key: string, value: Value): void {
@@ -82,7 +78,12 @@ export default class extends Base{
 	}
 	public set(key: string, value: Value): void {
 		const [k, ...props] = objUtil.parseKey(key);
-		
+
+		const data = this._get(k);
+
+		objUtil.set(data, props, value);
+
+		this._set(k, data);
 	}
 
 	private _delete(key: string): void {
@@ -91,10 +92,22 @@ export default class extends Base{
 	public delete(key: string): void {
 		const [k, ...props] = objUtil.parseKey(key);
 
+		if(props.length){
+			const data = this._get(k);
+
+			objUtil.delete(data, props);
+			this.set(key, data);
+		}else{
+			this._delete(k);
+			if(this._cacheType !== 0){
+				delete this._cache[k];
+			}
+		}
 	}
 
 	public clear(): void{
 		this.statements.clear.run();
+		this._cache = {};
 	}
 }
 

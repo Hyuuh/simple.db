@@ -14,5 +14,5 @@
 		"removeComments": true,
 		"preserveConstEnums": true,
 	},
-	"exclude": ["node_modules", "old", "lib"]
+	"include": ["src"]
 }
