@@ -204,20 +204,16 @@ export default abstract class Base{
 		this.array = new ArrayUtils(this);
 		this.number = new NumberUtils(this);
 	}
-
 	protected _cache: Data = {};
 	protected _cacheType: cacheTypes = 0;
 
 	abstract get data(): Data;
-
 	public get keys(): string[]{
 		return Object.keys(this.data);
 	}
-
 	public get values(): Value[]{
 		return Object.values(this.data);
 	}
-
 	public get entries(): Array<[string, Value]>{
 		return Object.entries(this.data);
 	}
@@ -228,7 +224,6 @@ export default abstract class Base{
 	abstract clear(): void;
 
 	public array: ArrayUtils = null;
-
 	public number: NumberUtils = null;
 
 	public toJSON(indentation: string = null): string{
@@ -268,21 +263,19 @@ database
 
 const regex = /\[(.*?)\]|[^.[]+/g;
 export const objUtil = {
-	get(obj: any, props: string[]): unknown {
+	get(obj: unknown, props: string[]): unknown {
 		if(props.length === 0) return obj;
 
 		return props.reduce<unknown>((acc, prop: string, i: number) => {
 			if(typeof acc !== 'object' || acc === null){
 				throw new Error(`Value at ${props.slice(0, i).join('.')} is not an object`);
 			}
-			if(!(prop in acc)){
-				return undefined;
-			}
+			if(!(prop in acc)) return null;
 
-			return acc[prop];
+			return acc[prop] as unknown;
 		}, obj);
 	},
-	set(obj: any, props: string[], value: any = null): any{
+	set(obj: any, props: string[], value: any = null): any {
 		if(props.length === 0) return;
 
 		props.reduce((acc: any, prop: string, index: number) => {
@@ -300,7 +293,7 @@ export const objUtil = {
 
 		return obj;
 	},
-	delete(obj: any, props: string[]): void{
+	delete(obj: unknown, props: string[]): void{
 		const key = props.pop();
 		obj = this.get(obj, props);
 
@@ -308,14 +301,12 @@ export const objUtil = {
 
 		delete obj[key];
 	},
-	clone(obj: any): any{
+	clone(obj: unknown): unknown {
 		try{
 			return JSON.parse(
 				JSON.stringify(obj)
-			);
-		}catch(e){
-			return undefined;
-		}
+			) as unknown;
+		}catch(e){}
 	},
 	parseKey(key: string): string[]{
 		key = key.trim();

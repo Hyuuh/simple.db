@@ -2,6 +2,11 @@ import type { RawOptions, Data, Value, cacheTypes } from './base';
 import Base, { objUtil } from './base';
 import * as BETTER_SQLITE3 from 'better-sqlite3';
 
+interface entry {
+	key: string;
+	value: string;
+}
+
 export default class extends Base{
 	constructor(options?: RawOptions){
 		super();
@@ -25,11 +30,11 @@ export default class extends Base{
 
 		Object.assign(this, options);
 		this.statements = {
-			set: db.prepare(`INSERT OR REPLACE INTO ${options.name} VALUES(?, ?)`),
-			delete: db.prepare(`DELETE FROM ${options.name} WHERE key = ?`),
-			clear: db.prepare(`DELETE FROM ${options.name}`),
-			getAll: db.prepare(`SELECT * FROM ${options.name}`),
-			get: db.prepare(`SELECT * FROM ${options.name} WHERE key = ?`),
+			set: db.prepare(`INSERT OR REPLACE INTO [${options.name}] VALUES(?, ?)`),
+			delete: db.prepare(`DELETE FROM [${options.name}] WHERE key = ?`),
+			clear: db.prepare(`DELETE FROM [${options.name}]`),
+			getAll: db.prepare(`SELECT * FROM [${options.name}]`),
+			get: db.prepare(`SELECT * FROM [${options.name}] WHERE key = ?`),
 		};
 		if(this._cacheType !== 0){
 			this._cache = this._getAll();
@@ -38,7 +43,7 @@ export default class extends Base{
 
 	private readonly statements: Record<string, BETTER_SQLITE3.Statement> = null;
 
-	public _getAll(): Data {
+	private _getAll(): Data {
 		return this.statements.getAll.all().reduce<Data>((
 			acc: Record<string, Value>,
 			{ key, value }: { key: string, value: string }
@@ -49,7 +54,7 @@ export default class extends Base{
 		}, {});
 	}
 
-	public get data(): Data{
+	public get data(): Data {
 		switch(this._cacheType){
 			case 0: return this._getAll();
 			case 1: return objUtil.clone(this._cache) as Data;
@@ -58,29 +63,34 @@ export default class extends Base{
 		}
 	}
 
-	public get(key: string): Value{
-		if(this._cacheType !== 0){
-			return objUtil.get(this._cache, objUtil.parseKey(key));
+	private _get(key: string): Value {
+		if(this._cacheType === 0){
+			const entry = this.statements.get.get(key) as entry;
+			if(!entry) return;
+	
+			return JSON.parse(entry.value) as Value;
 		}
+	}
+	public get(key: string): Value {
 		const [k, ...props] = objUtil.parseKey(key);
 
-		const entry = this.statements.get.get(k);
-		if(!entry) return;
 
-		return objUtil.get(JSON.parse(entry.value), props);
 	}
 
-	public set(key: string, value: Value): void{
-		if(this._cacheType !== 0){
-			return objUtil.get(this._cache, objUtil.parseKey(key));
-		}
-		value = JSON.stringify(value);
-
+	private _set(key: string, value: Value): void {
 		this.statements.set.run(key, JSON.stringify(value));
 	}
+	public set(key: string, value: Value): void {
+		const [k, ...props] = objUtil.parseKey(key);
+		
+	}
 
-	public delete(key: string): void{
+	private _delete(key: string): void {
 		this.statements.delete.run(key);
+	}
+	public delete(key: string): void {
+		const [k, ...props] = objUtil.parseKey(key);
+
 	}
 
 	public clear(): void{
@@ -110,14 +120,14 @@ function parseOptions(options: RawOptions = {}): Options{
 
 	if(typeof options.path !== 'string'){
 		throw new Error('the database path should be a string');
-	}else if(!Number.isFinite(options.cacheType)){
+	}else if(!Number.isFinite(options.cacheType) || options.cacheType < 0 || options.cacheType > 2){
 		throw new Error("'cacheType' should be a number between 0 and 2");
 	}else if(typeof options.name !== 'string'){
 		throw new Error("database 'name' should be a string");
 	}else if(options.name.startsWith('sqlite_')){
-		throw new Error("database 'name' can't start with 'sqlite_' (in SQLite)");
-	}else if(!options.name.match(/^[A-z_'"`][A-z\d_'"`]*$/)){
-		throw new Error("introduced database 'name' is not valid (in SQLite)");
+		throw new Error("database 'name' can't start with 'sqlite_'");
+	}else if(!options.name.includes(']')){
+		throw new Error("introduced database 'name' cannot include ']'");
 	}
 
 	return options as Options;

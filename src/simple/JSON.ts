@@ -40,7 +40,7 @@ export default class extends Base{
 			this._cache = objUtil.clone(data) as Data;
 		}
 
-		writeJSON(this.path, data);
+		writeJSON(this.path, data, this.check);
 	}
 
 	public delete(key: string): void{

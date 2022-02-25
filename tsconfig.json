@@ -4,11 +4,15 @@
 		"module": "commonjs",
 		"outDir": "./lib",
 		"target": "es6",
+
+		"sourceMap": true,
+		"declaration": true,
+		
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
 		"noImplicitAny": true,
 		"removeComments": true,
 		"preserveConstEnums": true,
-		"sourceMap": true,
-		"declaration": true,
 	},
-	"exclude": ["node_modules", "old"]
+	"exclude": ["node_modules", "old", "lib"]
 }
