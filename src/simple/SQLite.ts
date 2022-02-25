@@ -1,4 +1,5 @@
-import Base, { RawOptions, Data, Value, cacheTypes, obj } from './base';
+import type { RawOptions, Data, Value, cacheTypes } from './base';
+import Base, { objUtil } from './base';
 import * as BETTER_SQLITE3 from 'better-sqlite3';
 
 export default class extends Base{
@@ -6,7 +7,7 @@ export default class extends Base{
 		super();
 		options = parseOptions(options);
 
-		let db;
+		let db = null;
 		try{
 			db = new BETTER_SQLITE3(options.path);
 		}catch(e){
@@ -14,7 +15,7 @@ export default class extends Base{
 		}
 
 		try{
-			db.prepare(`CREATE TABLE IF NOT EXISTS ${options.name}(key TEXT PRIMARY KEY, value TEXT)`).run();
+			db.prepare(`CREATE TABLE IF NOT EXISTS [${options.name}](key TEXT PRIMARY KEY, value TEXT)`).run();
 		}catch(e){
 			if(e.message === 'file is not a database'){
 				throw new Error(`file in '${options.path}' is not a valid SQLite database`);
@@ -29,54 +30,60 @@ export default class extends Base{
 			clear: db.prepare(`DELETE FROM ${options.name}`),
 			getAll: db.prepare(`SELECT * FROM ${options.name}`),
 			get: db.prepare(`SELECT * FROM ${options.name} WHERE key = ?`),
-		}
+		};
 		if(this._cacheType !== 0){
 			this._cache = this._getAll();
 		}
 	}
-	statements: Record<string, BETTER_SQLITE3.Statement> = null;
 
-	_getAll(): Data {
-		return this.statements.getAll.all().reduce((
+	private readonly statements: Record<string, BETTER_SQLITE3.Statement> = null;
+
+	public _getAll(): Data {
+		return this.statements.getAll.all().reduce<Data>((
 			acc: Record<string, Value>,
 			{ key, value }: { key: string, value: string }
 		) => {
-			acc[key] = JSON.parse(value);
+			acc[key] = JSON.parse(value) as Value;
 
 			return acc;
 		}, {});
 	}
-	get data(): Data {
+
+	public get data(): Data{
 		switch(this._cacheType){
 			case 0: return this._getAll();
-			case 1: return obj.clone(this._cache);
+			case 1: return objUtil.clone(this._cache) as Data;
 			case 2: return this._cache;
-			default: throw new Error("'cacheType' must be a number between 0 and 2");
+			default:throw new Error("'cacheType' must be a number between 0 and 2");
 		}
 	}
-	get(key: string): Value {
+
+	public get(key: string): Value{
 		if(this._cacheType !== 0){
-			return obj.get(this._cache, obj.parseKey(key));
+			return objUtil.get(this._cache, objUtil.parseKey(key));
 		}
-		const [k, ...props] = obj.parseKey(key);
-		
+		const [k, ...props] = objUtil.parseKey(key);
+
 		const entry = this.statements.get.get(k);
 		if(!entry) return;
 
-		return obj.get(JSON.parse(entry.value), props);
+		return objUtil.get(JSON.parse(entry.value), props);
 	}
-	set(key: string, value: Value): void {
+
+	public set(key: string, value: Value): void{
 		if(this._cacheType !== 0){
-			return obj.get(this._cache, obj.parseKey(key));
+			return objUtil.get(this._cache, objUtil.parseKey(key));
 		}
 		value = JSON.stringify(value);
 
 		this.statements.set.run(key, JSON.stringify(value));
 	}
-	delete(key: string): void {
+
+	public delete(key: string): void{
 		this.statements.delete.run(key);
 	}
-	clear(): void {
+
+	public clear(): void{
 		this.statements.clear.run();
 	}
 }
@@ -91,9 +98,9 @@ const DEFAULT_OPTIONS = {
 	cacheType: 1,
 	path: './simple-db.sqlite',
 	name: 'simple-db',
-}
+};
 
-function parseOptions(options: RawOptions = {}): Options {
+function parseOptions(options: RawOptions = {}): Options{
 	if(typeof options === 'string') options = { path: options };
 	if(typeof options !== 'object'){
 		throw new Error('the database options should be an object or a string with the path');

@@ -1,4 +1,5 @@
-import Base, { RawOptions, Data, Value, cacheTypes, obj } from './base';
+import type { RawOptions, Data, Value, cacheTypes } from './base';
+import Base, { objUtil } from './base';
 import * as fs from 'fs';
 
 export default class extends Base{
@@ -12,38 +13,43 @@ export default class extends Base{
 		}
 
 		if(this._cacheType !== 0){
-			this._cache = JSONRead(this.path);
+			this._cache = readJSON(this.path);
 		}
 	}
-	path: string = null;
-	check = false;
 
-	get data(): Data {
+	private readonly path: string = null;
+	private readonly check = false;
+
+	public get data(): Data {
 		switch(this._cacheType){
-			case 0: return JSONRead(this.path);
-			case 1: return obj.clone(this._cache);
+			case 0: return readJSON(this.path);
+			case 1: return objUtil.clone(this._cache) as Data;
 			case 2: return this._cache;
-			default: throw new Error("'cacheType' must be a number between 0 and 2");
+			default:throw new Error("'cacheType' must be a number between 0 and 2");
 		}
 	}
-	get(key: string): Value {
-		return obj.get(this.data, obj.parseKey(key));
+
+	public get(key: string): Value {
+		return objUtil.get(this.data, objUtil.parseKey(key)) as Value;
 	}
-	set(key: string, value: Value): void {
-		const data = obj.set(this.data, obj.parseKey(key), value);
+
+	public set(key: string, value: Value): void{
+		const data = objUtil.set(this.data, objUtil.parseKey(key), value) as Data;
 
 		if(this._cacheType !== 2){
-			this._cache = obj.clone(data);
+			this._cache = objUtil.clone(data) as Data;
 		}
 
-		JSONWrite(this.path, data);
+		writeJSON(this.path, data);
 	}
-	delete(key: string): void {
-		obj.delete(this.data, obj.parseKey(key));
+
+	public delete(key: string): void{
+		objUtil.delete(this.data, objUtil.parseKey(key));
 	}
-	clear(): void {
+
+	public clear(): void{
 		this._cache = Array.isArray(this.data) ? [] : {};
-		JSONWrite(this.path, this._cache);
+		writeJSON(this.path, this._cache);
 	}
 }
 
@@ -56,10 +62,10 @@ interface Options {
 const DEFAULT_OPTIONS = {
 	cacheType: 1,
 	path: './simple-db.json',
-	check: false
+	check: false,
 };
 
-function parseOptions(options: RawOptions = {}): Options {
+function parseOptions(options: RawOptions = {}): Options{
 	if(typeof options === 'string') options = { path: options };
 	if(typeof options !== 'object'){
 		throw new Error('the database options should be an object or a string with the path');
@@ -78,8 +84,8 @@ function parseOptions(options: RawOptions = {}): Options {
 	return options as Options;
 }
 
-function JSONWrite(path: string, data: Data, check = false){
-	let stringifiedData;
+function writeJSON(path: string, data: Data, check = false){
+	let stringifiedData = null;
 
 	try{
 		stringifiedData = JSON.stringify(data, null, '\t');
@@ -98,14 +104,14 @@ function JSONWrite(path: string, data: Data, check = false){
 		if(dataInJSON !== stringifiedData){
 			const path2 = `../backup-${Date.now()}.json`;
 
-			JSONWrite(path2, data);
+			writeJSON(path2, data);
 			throw new Error(`Error writing JSON in '${path}', data saved in '${path2}'`);
 		}
 	}
 }
 
-function JSONRead(path: string): Data {
-	let data;
+function readJSON(path: string): Data{
+	let data = null;
 
 	try{
 		data = fs.readFileSync(path, 'utf-8');
@@ -114,7 +120,7 @@ function JSONRead(path: string): Data {
 	}
 
 	try{
-		data = JSON.parse(data);
+		data = JSON.parse(data) as Data;
 	}catch(e){
 		throw new Error(`Error parsing JSON in '${path}'`);
 	}

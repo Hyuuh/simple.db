@@ -13,9 +13,9 @@ class NumberUtils{
 	constructor(db: Base){
 		this.db = db;
 	}
-	db: Base = null;
+	private readonly db: Base = null;
 
-	add(key: string, value: number): number {
+	public add(key: string, value: number): number{
 		if(typeof value !== 'number' || isNaN(value)){
 			throw new Error("'value' must be a number");
 		}
@@ -34,7 +34,7 @@ class NumberUtils{
 		return num;
 	}
 
-	subtract(key: string, value: number): number {
+	public subtract(key: string, value: number): number{
 		return this.add(key, -value);
 	}
 }
@@ -43,9 +43,10 @@ class ArrayUtils{
 	constructor(db: Base){
 		this.db = db;
 	}
-	db: Base = null;
 
-	_getArray(key: string): Value[] {
+	private readonly db: Base = null;
+
+	public _getArray(key: string): Value[]{
 		const arr = this.db.get(key);
 
 		if(!Array.isArray(arr)){
@@ -55,7 +56,7 @@ class ArrayUtils{
 		return arr;
 	}
 
-	push(key: string, ...values: Value[]): Value[] {
+	public push(key: string, ...values: Value[]): Value[]{
 		let arr = this.db.get(key);
 
 		if(typeof arr === 'undefined' || arr === null){
@@ -72,12 +73,12 @@ class ArrayUtils{
 		return arr;
 	}
 
-	extract(
+	public extract(
 		key: string,
 		index: number | string | (
 			(value: Value, index: number, obj: Value[]) => unknown
 		)
-	): Value {
+	): Value{
 		const arr = this.db.get(key);
 
 		if(typeof arr === 'undefined') return;
@@ -105,7 +106,7 @@ class ArrayUtils{
 
 	// from here methods throw an error if the array does not exists
 
-	splice(
+	public splice(
 		key: string,
 		start: number,
 		deleteCount: number,
@@ -119,81 +120,81 @@ class ArrayUtils{
 		return values;
 	}
 
-	random(key: string): Value {
+	public random(key: string): Value{
 		const arr = this._getArray(key);
 		return arr[Math.floor(Math.random() * arr.length)];
 	}
 
 	// from here methods throw an error if the array does not exists
 
-	includes(
+	public includes(
 		key: string,
 		searchElement: Value,
 		fromIndex?: number
-	): boolean {
+	): boolean{
 		return this._getArray(key).includes(searchElement, fromIndex);
 	}
 
-	find(
+	public find(
 		key: string,
 		callback: (value: Value, index: number, obj: Value[]) => unknown,
 		thisArg?: unknown
-	): Value {
+	): Value{
 		return this._getArray(key).find(callback, thisArg);
 	}
 
-	findIndex(
+	public findIndex(
 		key: string,
 		callback: (value: Value, index: number, obj: Value[]) => unknown,
 		thisArg?: unknown
-	): number | -1 {
+	): number | -1{
 		return this._getArray(key).findIndex(callback, thisArg);
 	}
 
-	sort(
+	public sort(
 		key: string,
 		compareFn?: (a: Value, b: Value) => number
-	): Value[] {
+	): Value[]{
 		return this._getArray(key).sort(compareFn);
 	}
 
-	reduce(
-        key: string,
-        callback: (previousValue: unknown, currentValue: Value, currentIndex: number, array: Value[]) => unknown,
-        initialValue: unknown
-    ): unknown {
+	public reduce(
+		key: string,
+		callback: (previousValue: unknown, currentValue: Value, currentIndex: number, array: Value[]) => unknown,
+		initialValue: unknown
+	): unknown{
 		return this._getArray(key).reduce(callback, initialValue);
 	}
 
-	filter(
+	public filter(
 		key: string,
 		callback: (value: Value, index: number, obj: Value[]) => unknown,
 		thisArg?: unknown
-	): Value[] {
+	): Value[]{
 		return this._getArray(key).filter(callback, thisArg);
 	}
 
-	map(
+	public map(
 		key: string,
 		callback: (value: Value, index: number, obj: Value[]) => unknown,
 		thisArg?: unknown
-	): unknown[] {
+	): unknown[]{
 		return this._getArray(key).map(callback, thisArg);
 	}
 
-	some(
+	public some(
 		key: string,
 		callback: (value: Value, index: number, obj: Value[]) => unknown,
 		thisArg?: unknown
-	): boolean {
+	): boolean{
 		return this._getArray(key).some(callback, thisArg);
 	}
 
-	every(
+	public every(
 		key: string,
 		callback: (value: Value, index: number, obj: Value[]) => unknown,
 		thisArg?: unknown
-	): boolean {
+	): boolean{
 		return this._getArray(key).every(callback, thisArg);
 	}
 }
@@ -203,17 +204,21 @@ export default abstract class Base{
 		this.array = new ArrayUtils(this);
 		this.number = new NumberUtils(this);
 	}
-	_cache: Data = {};
-	_cacheType: cacheTypes = 0;
+
+	protected _cache: Data = {};
+	protected _cacheType: cacheTypes = 0;
 
 	abstract get data(): Data;
-	get keys(): string[] {
+
+	public get keys(): string[]{
 		return Object.keys(this.data);
 	}
-	get values(): Value[] {
+
+	public get values(): Value[]{
 		return Object.values(this.data);
 	}
-	get entries(): [string, Value][] {
+
+	public get entries(): Array<[string, Value]>{
 		return Object.entries(this.data);
 	}
 
@@ -222,10 +227,11 @@ export default abstract class Base{
 	abstract delete(key: string): void;
 	abstract clear(): void;
 
-	array: ArrayUtils = null;
-	number: NumberUtils = null;
+	public array: ArrayUtils = null;
 
-	toJSON(indentation: string = null): string {
+	public number: NumberUtils = null;
+
+	public toJSON(indentation: string = null): string{
 		return JSON.stringify(this.data, null, indentation);
 	}
 }
@@ -261,11 +267,11 @@ database
 */
 
 const regex = /\[(.*?)\]|[^.[]+/g;
-export const obj = {
-	get(obj: any, props: string[]): any {
+export const objUtil = {
+	get(obj: any, props: string[]): unknown {
 		if(props.length === 0) return obj;
 
-		return props.reduce((acc: any, prop: string, i: number) => {
+		return props.reduce<unknown>((acc, prop: string, i: number) => {
 			if(typeof acc !== 'object' || acc === null){
 				throw new Error(`Value at ${props.slice(0, i).join('.')} is not an object`);
 			}
@@ -276,7 +282,7 @@ export const obj = {
 			return acc[prop];
 		}, obj);
 	},
-	set(obj: any, props: string[], value: any = null): any {
+	set(obj: any, props: string[], value: any = null): any{
 		if(props.length === 0) return;
 
 		props.reduce((acc: any, prop: string, index: number) => {
@@ -294,7 +300,7 @@ export const obj = {
 
 		return obj;
 	},
-	delete(obj: any, props: string[]): void {
+	delete(obj: any, props: string[]): void{
 		const key = props.pop();
 		obj = this.get(obj, props);
 
@@ -302,7 +308,7 @@ export const obj = {
 
 		delete obj[key];
 	},
-	clone(obj: any): any {
+	clone(obj: any): any{
 		try{
 			return JSON.parse(
 				JSON.stringify(obj)
@@ -311,7 +317,7 @@ export const obj = {
 			return undefined;
 		}
 	},
-	parseKey(key: string): string[] {
+	parseKey(key: string): string[]{
 		key = key.trim();
 
 		if(typeof key !== 'string'){
