@@ -1,12 +1,18 @@
-import type { Database } from 'better-sqlite3';
+import type { Database as BETTER_SQLITE3_DATABASE } from 'better-sqlite3';
 
 export class Base{
-	constructor(db: Database){
-		this.db = db;
+	constructor(db: BETTER_SQLITE3_DATABASE){
+		Object.defineProperty(this, 'db', {
+			value: db,
+			writable: false,
+			enumerable: false,
+			configurable: false,
+		});
 	}
 
-	protected readonly db: Database;
+	protected readonly db: BETTER_SQLITE3_DATABASE;
 }
+
 
 type DataType = 'BLOB' | 'INTEGER' | 'NUMERIC' | 'REAL' | 'TEXT';
 type conflictClause = '' | ` ON CONFLICT ${'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE' | 'ROLLBACK'}`;
@@ -17,10 +23,10 @@ type columnConstraint = '' |
 	`PRIMARY KEY${' ASC' |' DESC' | ''}${conflictClause}${' AUTOINCREMENT' | ''}` |
 	`UNIQUE${conflictClause}`;
 
-type column = string | [string, columnConstraint, DataType?];
+export type column = string | [string, columnConstraint, DataType?];
 
-class ColumnsManager extends Base{
-	constructor(db: Database, tableName: string){
+export class ColumnsManager extends Base{
+	constructor(db: BETTER_SQLITE3_DATABASE, tableName: string){
 		super(db);
 		this.tableName = tableName;
 	}
@@ -29,11 +35,11 @@ class ColumnsManager extends Base{
 
 	public add(column: column): void{
 		this.db.prepare(`ALTER TABLE [${this.tableName}] ADD COLUMN ${
-			ColumnsManager.parseOne(column)
+			ColumnsManager.parse(column)
 		}`).run();
 	}
 
-	public remove(name: string): void {
+	public delete(name: string): void {
 		this.db.prepare(`ALTER TABLE [${this.tableName}] DROP COLUMN [${name}]`).run();
 	}
 
@@ -41,22 +47,13 @@ class ColumnsManager extends Base{
 		this.db.prepare(`ALTER TABLE [${this.tableName}] RENAME COLUMN ${oldName} TO ${newName}`).run();
 	}
 
-	public static parseOne(column: column): string{
+	public static parse(column: column): string{
 		if(typeof column === 'string') return `[${column}]`;
 		const [name, constraint = '', type = 'BLOB'] = column;
 
 		return `[${name}] ${type} ${constraint}`;
 	}
-
-	public static parse(columns: column[] | string): string{
-		if(typeof columns === 'string') return columns;
-
-		return columns.map(ColumnsManager.parseOne).join(', ');
-	}
 }
-
-const a = 1;
-export { a, ColumnsManager, type column };
 
 export class TransactionManager extends Base{
 	// https://www.sqlite.org/lang_transaction.html
@@ -93,4 +90,3 @@ export class TransactionManager extends Base{
 		}
 	}
 }
-

@@ -7,7 +7,7 @@ interface entry {
 	value: string;
 }
 
-export default class extends Base{
+export default class Database extends Base{
 	constructor(options?: RawOptions){
 		super();
 		const opts = parseOptions(options);
@@ -131,19 +131,19 @@ function parseOptions(options: RawOptions = {}): Options{
 		throw new Error('the database options should be an object or a string with the path');
 	}
 
-	options = Object.assign({}, DEFAULT_OPTIONS, options);
+	const opts = Object.assign({}, DEFAULT_OPTIONS, options);
 
-	if(typeof options.path !== 'string'){
+	if(typeof opts.path !== 'string'){
 		throw new Error('the database path should be a string');
-	}else if(!Number.isFinite(options.cacheType) || options.cacheType < 0 || options.cacheType > 2){
+	}else if(!Number.isFinite(opts.cacheType) || opts.cacheType < 0 || opts.cacheType > 2){
 		throw new Error("'cacheType' should be a number between 0 and 2");
-	}else if(typeof options.name !== 'string'){
+	}else if(typeof opts.name !== 'string'){
 		throw new Error("database 'name' should be a string");
-	}else if(options.name.startsWith('sqlite_')){
+	}else if(opts.name.startsWith('sqlite_')){
 		throw new Error("database 'name' can't start with 'sqlite_'");
-	}else if(!options.name.includes(']')){
+	}else if(opts.name.includes(']')){
 		throw new Error("introduced database 'name' cannot include ']'");
 	}
 
-	return options as Options;
+	return opts as Options;
 }

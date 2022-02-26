@@ -2,7 +2,7 @@ import type { RawOptions, Data, Value, cacheTypes } from './base';
 import Base, { objUtil } from './base';
 import * as fs from 'fs';
 
-export default class extends Base{
+export default class Database extends Base{
 	constructor(options?: RawOptions){
 		super();
 
@@ -21,6 +21,9 @@ export default class extends Base{
 	private readonly path: string;
 	private readonly check = false;
 
+	private _save(data: Data){
+		writeJSON(this.path, data, this.check);
+	}
 	public get data(): Data {
 		switch(this._cacheType){
 			case 0: return readJSON(this.path);
@@ -41,11 +44,14 @@ export default class extends Base{
 			this._cache = objUtil.clone(data) as Data;
 		}
 
-		writeJSON(this.path, data, this.check);
+		this._save(data);
 	}
 
 	public delete(key: string): void{
-		objUtil.delete(this.data, objUtil.parseKey(key));
+		const d = this.data;
+		objUtil.delete(d, objUtil.parseKey(key));
+
+		this._save(d);
 	}
 
 	public clear(): void{
