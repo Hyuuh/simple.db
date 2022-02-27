@@ -25,24 +25,32 @@ type columnConstraint = '' |
 export type column = string | [string, columnConstraint, DataType?];
 
 export class ColumnsManager extends Base{
-	constructor(db: BETTER_SQLITE3_DATABASE, tableName: string){
+	constructor(db: BETTER_SQLITE3_DATABASE, tableName: string, list: string[]){
 		super(db);
 		this.table = tableName;
+		this.list = list;
 	}
+	public list: string[];
 	public table: string;
 
-	public add(column: column): void{
+	public add(column: column): void {
 		this.db.prepare(`ALTER TABLE [${this.table}] ADD COLUMN ${
 			ColumnsManager.parse(column)
 		}`).run();
+
+		this.list.push(Array.isArray(column) ? column[0] : column);
 	}
 
 	public delete(name: string): void {
 		this.db.prepare(`ALTER TABLE [${this.table}] DROP COLUMN [${name}]`).run();
+
+		this.list.splice(this.list.indexOf(name), 1);
 	}
 
 	public rename(oldName: string, newName: string): void {
 		this.db.prepare(`ALTER TABLE [${this.table}] RENAME COLUMN ${oldName} TO ${newName}`).run();
+
+		this.list[this.list.indexOf(oldName)] = newName;
 	}
 
 	public static parse(column: column): string{

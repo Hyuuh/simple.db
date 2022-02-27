@@ -76,11 +76,13 @@ export default class Database extends Base{
 	public set(key: string, value: Value): void {
 		const [k, ...props] = objUtil.parseKey(key);
 
-		const data = this._get(k);
-
-		objUtil.set(data, props, value);
-
-		this._set(k, data);
+		if(props.length){
+			const data = this._get(k);
+			this._set(k, objUtil.set(data, props, value));
+		}else{
+			if(this.cache) this._cache[k] = value;
+			this._set(k, value);
+		}
 	}
 
 	private _delete(key: string): void {

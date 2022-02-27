@@ -13,10 +13,32 @@ class Table extends Base{
 	constructor(db: BETTER_SQLITE3_DATABASE, name: string){
 		super(db);
 		this.name = name;
-		this.columns = new ColumnsManager(db, name);
+
+
+		const selectAll = db.prepare(`SELECT * FROM [${name}]`);
+		const columnsList = selectAll.columns().map(c => c.name);
+
+		this.columns = new ColumnsManager(db, name, columnsList);
+
+		const namedColumns = columnsList.map(column => `@${column}`).join(', ');
+		const anonymValues = columnsList.map(() => '?').join(', ');
+
+		this.statements = {
+			selectAll: this.db.prepare(`SELECT * FROM [${this.name}]`),
+			select: this.db.prepare(`SELECT * FROM [${this.name}] WHERE ?`),
+
+			insert: this.db.prepare(`INSERT INTO [${this.name}] VALUES (${namedColumns})`),
+			insertArr: this.db.prepare(`INSERT INTO [${this.name}] VALUES (${anonymValues})`),
+			replace: this.db.prepare(`INSERT OR REPLACE INTO [${this.name}] VALUES (${namedColumns})`),
+			replaceArr: this.db.prepare(`INSERT OR REPLACE INTO [${this.name}] VALUES (${anonymValues})`),
+
+			clear: this.db.prepare(`DELETE FROM [${this.name}]`),
+			delete: this.db.prepare(`DELETE FROM [${this.name}] WHERE ?`),
+		};
 	}
 	public name: string;
 	public columns: ColumnsManager;
+	private readonly statements: Record<string, BETTER_SQLITE3.Statement>;
 
 	public static prepareValues(values: valuesObj): string[] {
 		const keys = Object.keys(values);
@@ -35,55 +57,39 @@ class Table extends Base{
 	public get(condition: condition = ''): valuesObj {
 		if(typeof condition === 'string'){
 			if(condition === ''){
-				return this.db.prepare(`SELECT * FROM [${this.name}]`).get() as valuesObj;
+				return this.statements.selectAll.get() as valuesObj;
 			}
-			return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${condition}`).get() as valuesObj;
+			return this.statements.select.get(condition) as valuesObj;
 		}
 
-		return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${
-			Table.prepareCondition(condition)
-		}`).get(condition) as valuesObj;
+		return this.statements.select.get(
+			Table.prepareCondition(condition), condition
+		) as valuesObj;
 	}
 
 	public select(condition: condition = ''): valuesObj[] {
 		if(typeof condition === 'string'){
-			return this.db.prepare(`SELECT * FROM [${this.name}]`).all() as valuesObj[];
+			return this.statements.selectAll.all() as valuesObj[];
 		}
-		return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${
-			Table.prepareCondition(condition)
-		}`).all(condition) as valuesObj[];
+
+		return this.statements.select.all(
+			Table.prepareCondition(condition), condition
+		) as valuesObj[];
 	}
 
 	public insert(values: value[] | valuesObj): void{
 		if(Array.isArray(values)){
-			this.db.prepare(`INSERT INTO [${this.name}] VALUES (${
-				values.map(() => '?').join(', ')
-			})`).run(values);
+			this.statements.insertArr.run(values);
 		}else{
-			const keys = Object.keys(values);
-			this.db.prepare(`INSERT INTO [${this.name}] (${
-				keys.join(', ')
-			}) VALUES (${
-				keys.map(key => `@${key}`).join(', ')
-			})`).run(values);
+			this.statements.insert.run(values);
 		}
 	}
 
-	public replace(condition: condition, values: value[] | valuesObj): void {
+	public replace(values: value[] | valuesObj): void {
 		if(Array.isArray(values)){
-			this.db.prepare(`REPLACE INTO [${this.name}] VALUES (${
-				values.map(() => '?').join(', ')
-			}) WHERE ${
-				Table.prepareCondition(condition)
-			}`).run(values);
+			this.statements.replaceArr.run(values);
 		}else{
-			this.db.prepare(`REPLACE INTO [${this.name}] (${
-				Object.keys(values).join(', ')
-			}) VALUES (${
-				Object.keys(values).map(key => `@${key}`).join(', ')
-			}) WHERE ${
-				Table.prepareCondition(condition)
-			}`).run(values);
+			this.statements.replace.run(values);
 		}
 	}
 
@@ -96,13 +102,11 @@ class Table extends Base{
 	}
 
 	public delete(condition: condition): void {
-		this.db.prepare(`DELETE FROM [${this.name}] WHERE ${
-			Table.prepareCondition(condition)
-		}`).run();
+		this.statements.delete.run(Table.prepareCondition(condition));
 	}
 
 	public clear(): void {
-		this.db.prepare(`DELETE FROM [${this.name}]`).run();
+		this.statements.clear.run();
 	}
 }
 
