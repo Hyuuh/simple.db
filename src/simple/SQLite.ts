@@ -19,7 +19,7 @@ export default class Database extends Base{
 			throw new Error("introduced 'path' is not valid");
 		}
 
-		db.prepare(`CREATE TABLE IF NOT EXISTS [${opts.name}](key TEXT PRIMARY KEY, value TEXT)`).run();
+		db.prepare(`CREATE TABLE IF NOT EXISTS [${opts.name}](key TEXT PRIMARY KEY, value TEXT) WITHOUT ROWID`).run();
 
 		Object.assign(this, opts);
 		this.statements = {
@@ -90,12 +90,19 @@ export default class Database extends Base{
 	}
 	public delete(key: string): void {
 		const [k, ...props] = objUtil.parseKey(key);
+		/*
+		db.set('baz', {
+			a: 1,
+			b: [1, 2, 3],
+		});
+		*/
+		// k = 'baz' props = ['a']
 
 		if(props.length){
 			const data = this._get(k);
 
 			objUtil.delete(data, props);
-			this.set(key, data);
+			this._set(k, data);
 		}else{
 			this._delete(k);
 			if(this.cache) delete this._cache[k];

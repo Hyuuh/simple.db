@@ -13,11 +13,8 @@ export default class Database extends Base{
 			fs.writeFileSync(opts.path, '{}');
 		}
 
-		if(this.cache){
-			this._cache = readJSON(this.path);
-		}
+		if(this.cache) this._cache = readJSON(this.path);
 	}
-
 	private readonly path: string;
 	private readonly check = false;
 

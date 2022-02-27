@@ -1,7 +1,7 @@
-import type { Database as BETTER_SQLITE3_DATABASE } from 'better-sqlite3';
+import type * as BSQL3 from 'better-sqlite3';
 
 export class Base{
-	constructor(db: BETTER_SQLITE3_DATABASE){
+	constructor(db: BSQL3.Database){
 		Object.defineProperty(this, 'db', {
 			value: db,
 			writable: false,
@@ -10,35 +10,41 @@ export class Base{
 		});
 	}
 
-	protected readonly db: BETTER_SQLITE3_DATABASE;
+	protected readonly db: BSQL3.Database;
 }
 
-type DataType = 'BLOB' | 'INTEGER' | 'NUMERIC' | 'REAL' | 'TEXT';
-type conflictClause = '' | ` ON CONFLICT ${'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE' | 'ROLLBACK'}`;
 
+type valueType = 'BLOB' | 'INTEGER' | 'NUMERIC' | 'REAL' | 'TEXT';
+export type value = Buffer | bigint | number | string | null;
+export interface Data {
+	[key: string | number]: value
+}
+export type condition = Data | string | null;
+
+type conflictClause = '' | ` ON CONFLICT ${'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE' | 'ROLLBACK'}`;
 type columnConstraint = '' |
-	`DEFAULT ${number | string}` |
+	// `DEFAULT ${number | string}` |
 	`NOT NULL${conflictClause}` |
 	`PRIMARY KEY${' ASC' |' DESC' | ''}${conflictClause}${' AUTOINCREMENT' | ''}` |
 	`UNIQUE${conflictClause}`;
 
-export type column = string | [string, columnConstraint, DataType?];
+export type column = string | [string, value?, columnConstraint?, valueType?];
 
 export class ColumnsManager extends Base{
-	constructor(db: BETTER_SQLITE3_DATABASE, tableName: string, list: string[]){
+	constructor(db: BSQL3.Database, tableName: string){
 		super(db);
 		this.table = tableName;
-		this.list = list;
 	}
-	public list: string[];
+	public list: string[] = [];
 	public table: string;
+	public defaults: Data = {};
 
 	public add(column: column): void {
 		this.db.prepare(`ALTER TABLE [${this.table}] ADD COLUMN ${
 			ColumnsManager.parse(column)
 		}`).run();
 
-		this.list.push(Array.isArray(column) ? column[0] : column);
+		ColumnsManager._add(column, this);
 	}
 
 	public delete(name: string): void {
@@ -53,46 +59,61 @@ export class ColumnsManager extends Base{
 		this.list[this.list.indexOf(oldName)] = newName;
 	}
 
-	public static parse(column: column): string{
-		if(typeof column === 'string') return `[${column}]`;
-		const [name, constraint = '', type = 'BLOB'] = column;
+	public static parse(column: column): string {
+		if(typeof column === 'string'){
+			return `[${column}]`;
+		}
 
-		return `[${name}] ${type} ${constraint}`;
+		return `[${column[0]}] ${column[3] ?? 'BLOB'} ${column[2] ?? ''}`;
+	}
+
+	public static _add(column: column, CM: ColumnsManager): void {
+		if(typeof column === 'string'){
+			CM.defaults[column] = null;
+			CM.list.push(column);
+		}else{
+			CM.defaults[column[0]] = column[1] ?? null;
+			CM.list.push(column[0]);
+		}
 	}
 }
 
 export class TransactionManager extends Base{
+	constructor(db: BSQL3.Database){
+		super(db);
+
+		this.db.prepare('PRAGMA foreign_keys = ON').run();
+		this.statements = {
+			begin:  this.db.prepare('BEGIN TRANSACTION'),
+			commit: this.db.prepare('COMMIT TRANSACTION'),
+			rollback: this.db.prepare('ROLLBACK TRANSACTION'),
+		};
+	}
+	private readonly statements: Record<string, BSQL3.Statement>;
+
 	// https://www.sqlite.org/lang_transaction.html
 	// https://www.sqlite.org/lang_savepoint.html
 	public begin(): void {
-		this.db.prepare('BEGIN TRANSACTION').run();
+		this.statements.begin.run();
 	}
 
 	public commit(): void {
-		this.db.prepare('COMMIT TRANSACTION').run();
+		this.statements.commit.run();
 	}
 
-	public savepoint(name?: string): void {
-		if(name){
-			this.db.prepare(`SAVEPOINT ${name}`).run();
-		}else{
-			this.db.prepare('SAVEPOINT').run();
-		}
+	public savepoint(name: string): void {
+		this.db.prepare(`SAVEPOINT ${name}`).run();
 	}
 
-	public deleteSavepoint(name?: string): void {
-		if(name){
-			this.db.prepare(`RELEASE SAVEPOINT ${name}`).run();
-		}else{
-			this.db.prepare('RELEASE SAVEPOINT').run();
-		}
+	public deleteSavepoint(name: string): void {
+		this.db.prepare(`RELEASE SAVEPOINT ${name}`).run();
 	}
 
 	public rollback(name?: string): void {
 		if(name){
 			this.db.prepare(`ROLLBACK TRANSACTION TO SAVEPOINT ${name}`).run();
 		}else{
-			this.db.prepare('ROLLBACK TRANSACTION').run();
+			this.statements.rollback.run();
 		}
 	}
 }

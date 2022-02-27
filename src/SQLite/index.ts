@@ -1,117 +1,124 @@
-import * as BETTER_SQLITE3 from 'better-sqlite3';
-import type { Database as BETTER_SQLITE3_DATABASE, Options } from 'better-sqlite3';
+// eslint-disable-next-line max-classes-per-file
+import * as BSQL3 from 'better-sqlite3';
 import { Base, ColumnsManager, TransactionManager } from './utils';
-import type { column } from './utils';
-
-type value = Buffer | bigint | number | string | null;
-interface valuesObj {
-	[key: string | number]: value
-}
-type condition = valuesObj | string;
+import type { Data, condition, column } from './utils';
 
 class Table extends Base{
-	constructor(db: BETTER_SQLITE3_DATABASE, name: string){
+	constructor(db: BSQL3.Database, name: string){
 		super(db);
 		this.name = name;
-
+		this.columns = new ColumnsManager(db, name);
 
 		const selectAll = db.prepare(`SELECT * FROM [${name}]`);
 		const columnsList = selectAll.columns().map(c => c.name);
-
-		this.columns = new ColumnsManager(db, name, columnsList);
-
 		const namedColumns = columnsList.map(column => `@${column}`).join(', ');
-		const anonymValues = columnsList.map(() => '?').join(', ');
+		// const anonymValues = columnsList.map(() => '?').join(', ');
 
 		this.statements = {
 			selectAll: this.db.prepare(`SELECT * FROM [${this.name}]`),
 			select: this.db.prepare(`SELECT * FROM [${this.name}] WHERE ?`),
 
 			insert: this.db.prepare(`INSERT INTO [${this.name}] VALUES (${namedColumns})`),
-			insertArr: this.db.prepare(`INSERT INTO [${this.name}] VALUES (${anonymValues})`),
+			// insertArr: this.db.prepare(`INSERT INTO [${this.name}] VALUES (${anonymValues})`),
 			replace: this.db.prepare(`INSERT OR REPLACE INTO [${this.name}] VALUES (${namedColumns})`),
-			replaceArr: this.db.prepare(`INSERT OR REPLACE INTO [${this.name}] VALUES (${anonymValues})`),
+			// replaceArr: this.db.prepare(`INSERT OR REPLACE INTO [${this.name}] VALUES (${anonymValues})`),
 
-			clear: this.db.prepare(`DELETE FROM [${this.name}]`),
+			deleteAll: this.db.prepare(`DELETE FROM [${this.name}]`),
 			delete: this.db.prepare(`DELETE FROM [${this.name}] WHERE ?`),
+
+			updateAll: this.db.prepare(`UPDATE [${this.name}] SET ${
+				columnsList.map(column => `${column}=?`).join(', ')
+			}`),
+			update: this.db.prepare(`UPDATE [${this.name}] SET ${
+				columnsList.map(column => `${column}=?`).join(', ')
+			} WHERE ?`),
 		};
 	}
 	public name: string;
 	public columns: ColumnsManager;
-	private readonly statements: Record<string, BETTER_SQLITE3.Statement>;
+	private readonly statements: Record<string, BSQL3.Statement>;
 
-	public static prepareValues(values: valuesObj): string[] {
-		const keys = Object.keys(values);
-
+	public static prepareCondition(condition: Data): string {
+		const keys = Object.keys(condition);
 		if(keys.length === 0) throw new Error('No values supplied');
 
-		return keys.map(key => `@${key}`);
+		return keys.map(key => `@${key}`).join(' AND ');
 	}
 
-	public static prepareCondition(condition: condition): string {
-		if(typeof condition === 'string') return condition;
-
-		return Table.prepareValues(condition).join(' AND ');
+	private prepareValues(values: Data): Data {
+		return Object.assign({}, this.columns.defaults, values);
 	}
 
-	public get(condition: condition = ''): valuesObj {
+	public get(condition: condition = null): Data {
+		if(condition === null){
+			return this.statements.selectAll.get() as Data;
+		}
 		if(typeof condition === 'string'){
-			if(condition === ''){
-				return this.statements.selectAll.get() as valuesObj;
-			}
-			return this.statements.select.get(condition) as valuesObj;
+			return this.statements.select.get(condition) as Data;
 		}
 
 		return this.statements.select.get(
 			Table.prepareCondition(condition), condition
-		) as valuesObj;
+		) as Data;
 	}
 
-	public select(condition: condition = ''): valuesObj[] {
+	public select(condition: condition = null): Data[] {
+		if(condition === null){
+			return this.statements.selectAll.all() as Data[];
+		}
 		if(typeof condition === 'string'){
-			return this.statements.selectAll.all() as valuesObj[];
+			return this.statements.select.all(condition) as Data[];
 		}
 
 		return this.statements.select.all(
 			Table.prepareCondition(condition), condition
-		) as valuesObj[];
+		) as Data[];
 	}
 
-	public insert(values: value[] | valuesObj): void{
-		if(Array.isArray(values)){
-			this.statements.insertArr.run(values);
+	public insert(values: Data): void{
+		this.statements.insert.run(
+			this.prepareValues(values)
+		);
+	}
+
+	public replace(values: Data): void {
+		this.statements.replace.run(
+			this.prepareValues(values)
+		);
+	}
+
+	public update(condition: condition, newValues: Data): void {
+		const v = [];
+
+		for(const column of this.columns.list){
+			v.push(column in newValues ? `@${column}` : column);
+		}
+
+		if(condition === null){
+			this.statements.updateAll.run(v, newValues);
+		}else if(typeof condition === 'string'){
+			this.statements.update.run(v, newValues, condition);
 		}else{
-			this.statements.insert.run(values);
+			this.statements.update.run(
+				v, newValues,
+				Table.prepareCondition(condition)
+			);
 		}
 	}
 
-	public replace(values: value[] | valuesObj): void {
-		if(Array.isArray(values)){
-			this.statements.replaceArr.run(values);
+	public delete(condition: condition = null): void {
+		if(condition === null){
+			this.statements.deleteAll.run();
+		}else if(typeof condition === 'string'){
+			this.statements.delete.run(condition);
 		}else{
-			this.statements.replace.run(values);
+			this.statements.delete.run(Table.prepareCondition(condition), condition);
 		}
-	}
-
-	public update(condition: condition, newValues: valuesObj): void {
-		this.db.prepare(`UPDATE [${this.name}] SET ${
-			Object.keys(newValues).map(key => `@${key}`).join(', ')
-		} WHERE ${
-			Table.prepareCondition(condition)
-		}`).run(newValues);
-	}
-
-	public delete(condition: condition): void {
-		this.statements.delete.run(Table.prepareCondition(condition));
-	}
-
-	public clear(): void {
-		this.statements.clear.run();
 	}
 }
 
 class TablesManager extends Base{
-	constructor(db: BETTER_SQLITE3_DATABASE){
+	constructor(db: BSQL3.Database){
 		super(db);
 
 		db.prepare("SELECT * FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
@@ -122,19 +129,21 @@ class TablesManager extends Base{
 	}
 	public list: Record<string, Table> = {};
 
-	public create(name: string, columns: column[] | string): Table {
+	public create(name: string, columns: column[]): Table {
 		if(name in this.list) return this.list[name];
 		if(columns.length === 0){
 			throw new Error('columns are empty');
 		}
 
 		this.db.prepare(`CREATE TABLE IF NOT EXISTS [${name}] (${
-			typeof columns === 'string' ? columns :
-				columns.map(ColumnsManager.parse).join(', ')
+			columns.map(c => ColumnsManager.parse(c)).join(', ')
 		})`).run();
 
-		this.list[name] = new Table(this.db, name);
-		return this.list[name];
+		const table = new Table(this.db, name);
+		for(const c of columns) ColumnsManager._add(c, table.columns);
+
+		this.list[name] = table;
+		return table;
 	}
 
 	public get(name: string): Table {
@@ -154,13 +163,13 @@ class TablesManager extends Base{
 	}
 }
 
-interface Opts extends Options {
+interface Opts extends BSQL3.Options {
 	path?: string;
 }
 
 export default class Database extends Base{
 	constructor(options: Opts = {}){
-		super(new BETTER_SQLITE3(options.path || './database.sqlite', options));
+		super(new BSQL3(options.path || './database.sqlite', options));
 		this.transaction = new TransactionManager(this.db);
 		this.tables = new TablesManager(this.db);
 	}

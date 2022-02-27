@@ -305,9 +305,11 @@ export const objUtil = {
 			}
 		}
 
-		if(Array.isArray(obj)){
+		// @ts-expect-error comparing string with number
+		if(Array.isArray(obj) && last >= obj.length){
 			throw new Error("adding a value to an array in the 'set' method is forbidden");
 		}
+		// @ts-expect-error string as a index of an array
 		obj[last] = value;
 
 		return obj;
