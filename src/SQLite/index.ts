@@ -178,6 +178,7 @@ export default class Database extends Base{
 	}
 }
 
+/*
 const db = new Database({
 	path: './test/database.sqlite',
 });
@@ -192,6 +193,7 @@ table.columns.rename('a', 'f');
 table.columns.delete('b');
 
 console.log(table.select());
+*/
 
 // https://www.sqlite.org/lang.html
 // https://github.com/JoshuaWise/better-sqlite3/blob/master/docs/api.md

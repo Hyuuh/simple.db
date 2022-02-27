@@ -13,7 +13,6 @@ export class Base{
 	protected readonly db: BETTER_SQLITE3_DATABASE;
 }
 
-
 type DataType = 'BLOB' | 'INTEGER' | 'NUMERIC' | 'REAL' | 'TEXT';
 type conflictClause = '' | ` ON CONFLICT ${'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE' | 'ROLLBACK'}`;
 
@@ -28,23 +27,22 @@ export type column = string | [string, columnConstraint, DataType?];
 export class ColumnsManager extends Base{
 	constructor(db: BETTER_SQLITE3_DATABASE, tableName: string){
 		super(db);
-		this.tableName = tableName;
+		this.table = tableName;
 	}
-
-	public tableName: string;
+	public table: string;
 
 	public add(column: column): void{
-		this.db.prepare(`ALTER TABLE [${this.tableName}] ADD COLUMN ${
+		this.db.prepare(`ALTER TABLE [${this.table}] ADD COLUMN ${
 			ColumnsManager.parse(column)
 		}`).run();
 	}
 
 	public delete(name: string): void {
-		this.db.prepare(`ALTER TABLE [${this.tableName}] DROP COLUMN [${name}]`).run();
+		this.db.prepare(`ALTER TABLE [${this.table}] DROP COLUMN [${name}]`).run();
 	}
 
 	public rename(oldName: string, newName: string): void {
-		this.db.prepare(`ALTER TABLE [${this.tableName}] RENAME COLUMN ${oldName} TO ${newName}`).run();
+		this.db.prepare(`ALTER TABLE [${this.table}] RENAME COLUMN ${oldName} TO ${newName}`).run();
 	}
 
 	public static parse(column: column): string{

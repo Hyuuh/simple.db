@@ -38,20 +38,26 @@ function testSimple(db){
 }
 describe('simple', () => {
 	it('json', () => {
-		const db = new Databases.simple.JSON();
+		const db = new Databases.simple.JSON({
+			path: 'test/simple-db.json',
+		});
 		
 		testSimple(db);
 	});
 
 	it('sqlite', () => {
-		const db = new Databases.simple.SQLite();
+		const db = new Databases.simple.SQLite({
+			path: 'test/simple-db.sqlite',
+		});
 		
 		testSimple(db);
 	});
 });
 
 it('sqlite', () => {
-	const db = new Databases.SQLite();
+	const db = new Databases.SQLite({
+		path: 'test/database.sqlite',
+	});
 
 	db.tables.delete('test');
 	db.tables.create('test', ['a', 'b', 'c']);

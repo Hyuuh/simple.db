@@ -4,9 +4,8 @@ export interface DataObj {
 }
 export type Data = DataObj | Value[];
 
-export type cacheTypes = 0 | 1 | 2;
 export type RawOptions = string | {
-	cacheType?: cacheTypes;
+	cache?: boolean;
 	path?: string;
 	check?: boolean;
 	name?: string;
@@ -208,7 +207,7 @@ export default abstract class Base{
 		this.number = new NumberUtils(this);
 	}
 	protected _cache: Data;
-	protected _cacheType: cacheTypes = 0;
+	protected cache = true;
 
 	public abstract get data(): Data;
 	public get keys(): string[] {
@@ -326,13 +325,6 @@ export const objUtil = {
 			throw new Error("deleting a value from an array in the 'delete' method is forbidden");
 		}
 		delete obj[key];
-	},
-	clone(obj: unknown): unknown {
-		try{
-			return JSON.parse(
-				JSON.stringify(obj)
-			);
-		}catch(e){}
 	},
 	parseKey(key: string): string[]{
 		key = key.trim();

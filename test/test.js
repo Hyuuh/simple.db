@@ -1,1 +1,0 @@
-const Databases = require('../lib/index.js').default;

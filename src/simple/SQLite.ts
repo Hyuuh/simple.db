@@ -1,4 +1,4 @@
-import type { RawOptions, DataObj, Value, cacheTypes } from './base';
+import type { RawOptions, DataObj, Value } from './base';
 import Base, { objUtil } from './base';
 import * as BETTER_SQLITE3 from 'better-sqlite3';
 
@@ -29,9 +29,7 @@ export default class Database extends Base{
 			getAll: db.prepare(`SELECT * FROM [${opts.name}]`),
 			get: db.prepare(`SELECT * FROM [${opts.name}] WHERE key = ?`),
 		};
-		if(this._cacheType !== 0){
-			this._cache = this._getAll();
-		}
+		if(this.cache) this._cache = this._getAll();
 	}
 	protected _cache: DataObj;
 
@@ -51,23 +49,20 @@ export default class Database extends Base{
 	}
 
 	public get data(): DataObj {
-		switch(this._cacheType){
-			case 0: return this._getAll();
-			case 1: return objUtil.clone(this._cache) as DataObj;
-			case 2: return this._cache;
-			default: throw new Error("'cacheType' must be a number between 0 and 2");
-		}
+		if(this.cache) return this._cache;
+
+		return this._getAll();
 	}
 
 	private _get(key: string): Value {
-		if(this._cacheType === 0){
-			const entry = this.statements.get.get(key) as entry;
-			if(!entry) return;
-
-			return JSON.parse(entry.value) as Value;
+		if(this.cache){
+			return this._cache[key];
 		}
 
-		return this._cache[key];
+		const entry = this.statements.get.get(key) as entry;
+		if(!entry) return;
+
+		return JSON.parse(entry.value) as Value;
 	}
 	public get(key: string): Value {
 		const [k, ...props] = objUtil.parseKey(key);
@@ -101,31 +96,29 @@ export default class Database extends Base{
 			this.set(key, data);
 		}else{
 			this._delete(k);
-			if(this._cacheType !== 0){
-				delete this._cache[k];
-			}
+			if(this.cache) delete this._cache[k];
 		}
 	}
 
-	public clear(): void{
+	public clear(): void {
 		this.statements.clear.run();
 		this._cache = {};
 	}
 }
 
 interface Options {
-	cacheType: cacheTypes;
+	cache: boolean;
 	path: string;
 	name: string;
 }
 
-const DEFAULT_OPTIONS = {
-	cacheType: 1,
+const DEFAULT_OPTIONS: Options = {
+	cache: true,
 	path: './simple-db.sqlite',
 	name: 'simple-db',
 };
 
-function parseOptions(options: RawOptions = {}): Options{
+function parseOptions(options: RawOptions = {}): Options {
 	if(typeof options === 'string') options = { path: options };
 	if(typeof options !== 'object'){
 		throw new Error('the database options should be an object or a string with the path');
@@ -135,8 +128,8 @@ function parseOptions(options: RawOptions = {}): Options{
 
 	if(typeof opts.path !== 'string'){
 		throw new Error('the database path should be a string');
-	}else if(!Number.isFinite(opts.cacheType) || opts.cacheType < 0 || opts.cacheType > 2){
-		throw new Error("'cacheType' should be a number between 0 and 2");
+	}else if(typeof opts.cache !== 'boolean'){
+		throw new Error('the cache option should be a boolean');
 	}else if(typeof opts.name !== 'string'){
 		throw new Error("database 'name' should be a string");
 	}else if(opts.name.startsWith('sqlite_')){

@@ -1,4 +1,4 @@
-import type { RawOptions, Data, Value, cacheTypes } from './base';
+import type { RawOptions, Data, Value } from './base';
 import Base, { objUtil } from './base';
 import * as fs from 'fs';
 
@@ -13,7 +13,7 @@ export default class Database extends Base{
 			fs.writeFileSync(opts.path, '{}');
 		}
 
-		if(this._cacheType !== 0){
+		if(this.cache){
 			this._cache = readJSON(this.path);
 		}
 	}
@@ -25,12 +25,8 @@ export default class Database extends Base{
 		writeJSON(this.path, data, this.check);
 	}
 	public get data(): Data {
-		switch(this._cacheType){
-			case 0: return readJSON(this.path);
-			case 1: return objUtil.clone(this._cache) as Data;
-			case 2: return this._cache;
-			default: throw new Error("'cacheType' must be a number between 0 and 2");
-		}
+		if(this.cache) return this._cache;
+		return readJSON(this.path);
 	}
 
 	public get(key: string): Value {
@@ -39,10 +35,6 @@ export default class Database extends Base{
 
 	public set(key: string, value: Value): void{
 		const data = objUtil.set(this.data, objUtil.parseKey(key), value) as Data;
-
-		if(this._cacheType !== 2){
-			this._cache = objUtil.clone(data) as Data;
-		}
 
 		this._save(data);
 	}
@@ -61,13 +53,13 @@ export default class Database extends Base{
 }
 
 interface Options {
-	cacheType: cacheTypes;
+	cache: boolean;
 	path: string;
 	check: boolean;
 }
 
-const DEFAULT_OPTIONS = {
-	cacheType: 1,
+const DEFAULT_OPTIONS: Options = {
+	cache: true,
 	path: './simple-db.json',
 	check: false,
 };
@@ -82,8 +74,8 @@ function parseOptions(options: RawOptions = {}): Options {
 
 	if(typeof options.path !== 'string'){
 		throw new Error('the database path should be a string');
-	}else if(!Number.isFinite(options.cacheType)){
-		throw new Error("'cacheType' should be a number between 0 and 2");
+	}else if(typeof options.cache !== 'boolean'){
+		throw new Error('the cache option should be a boolean');
 	}else if(typeof options.check !== 'boolean'){
 		throw new Error("'check' should be a boolean value");
 	}

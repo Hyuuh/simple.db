@@ -39,7 +39,7 @@
 		"typescript": "^4.0.3"
 	},
 	"scripts": {
-		"test": "tsc && node test/test.js",
+		"test": "tsc && node lib/index.js",
 		"mocha": "mocha test/mocha.js",
 		"lint": "npx eslint . --fix"
 	},
