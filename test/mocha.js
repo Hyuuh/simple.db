@@ -35,6 +35,7 @@ it.only('sqlite', () => {
 	table.insert({ a: 4, b: 5, c: 6 });
 	table.insert({ a: 7, b: 8, c: 9 });
 	
+	console.log(table.select())
 	expect(table.select({ a: 1 }), [{ a: 1, b: 2, c: null }]);
 
 	expect(table.select('a > 3 AND a < 8'), [{ a: 4, b: 5, c: 6 }, { a: 7, b: 8, c: 9 }]);

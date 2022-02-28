@@ -3,6 +3,31 @@ import * as BSQL3 from 'better-sqlite3';
 import { Base, ColumnsManager, TransactionManager } from './utils';
 import type { Data, condition, column } from './utils';
 
+interface TableStatements {
+	selectAll: BSQL3.Statement;
+	insert: BSQL3.Statement;
+	deleteAll: BSQL3.Statement;
+}
+
+let lastID = 0;
+
+function parseCondition(db: BSQL3.Database, condition: condition): string {
+	if(typeof condition === 'string') return condition;
+	if(typeof condition === 'function'){
+		const ID = lastID++;
+
+		db.function(
+			`F${ID}`,
+			// @ts-expect-error error on types from @types/better-sqlite3
+			{ varargs: true, deterministic: true, directOnly: true },
+			// eslint-disable-next-line no-confusing-arrow
+			(...args) => condition(...args) ? 1 : 0
+		);
+
+		return `${ID}()`;
+	}
+}
+
 class Table extends Base{
 	constructor(db: BSQL3.Database, name: string){
 		super(db);
@@ -12,108 +37,73 @@ class Table extends Base{
 		const selectAll = db.prepare(`SELECT * FROM [${name}]`);
 		const columnsList = selectAll.columns().map(c => c.name);
 		const namedColumns = columnsList.map(column => `@${column}`).join(', ');
-		// const anonymValues = columnsList.map(() => '?').join(', ');
 
 		this.statements = {
-			selectAll: this.db.prepare(`SELECT * FROM [${this.name}]`),
-			select: this.db.prepare(`SELECT * FROM [${this.name}] WHERE ?`),
-
-			insert: this.db.prepare(`INSERT INTO [${this.name}] VALUES (${namedColumns})`),
-			// insertArr: this.db.prepare(`INSERT INTO [${this.name}] VALUES (${anonymValues})`),
-			replace: this.db.prepare(`INSERT OR REPLACE INTO [${this.name}] VALUES (${namedColumns})`),
-			// replaceArr: this.db.prepare(`INSERT OR REPLACE INTO [${this.name}] VALUES (${anonymValues})`),
-
-			deleteAll: this.db.prepare(`DELETE FROM [${this.name}]`),
-			delete: this.db.prepare(`DELETE FROM [${this.name}] WHERE ?`),
-
-			updateAll: this.db.prepare(`UPDATE [${this.name}] SET ${
-				columnsList.map(column => `${column}=?`).join(', ')
-			}`),
-			update: this.db.prepare(`UPDATE [${this.name}] SET ${
-				columnsList.map(column => `${column}=?`).join(', ')
-			} WHERE ?`),
+			selectAll: this.db.prepare(`SELECT * FROM [${name}]`),
+			insert: this.db.prepare(`INSERT INTO [${name}] VALUES (${namedColumns})`),
+			deleteAll: this.db.prepare(`DELETE FROM [${name}]`),
 		};
 	}
 	public name: string;
 	public columns: ColumnsManager;
-	private readonly statements: Record<string, BSQL3.Statement>;
+	private readonly statements: TableStatements;
 
-	public static prepareCondition(condition: Data): string {
-		const keys = Object.keys(condition);
-		if(keys.length === 0) throw new Error('No values supplied');
-
-		return keys.map(key => `@${key}`).join(' AND ');
+	public static prepareValues(values: Data): string {
+		return Object.keys(values).map(k => `@${k}`).join(', ');
 	}
 
-	private prepareValues(values: Data): Data {
-		return Object.assign({}, this.columns.defaults, values);
+	public insert(values: Data): void {
+		this.statements.insert.run(
+			Object.assign({}, this.columns.defaults, values)
+		);
 	}
 
 	public get(condition: condition = null): Data {
 		if(condition === null){
 			return this.statements.selectAll.get() as Data;
 		}
-		if(typeof condition === 'string'){
-			return this.statements.select.get(condition) as Data;
-		}
 
-		return this.statements.select.get(
-			Table.prepareCondition(condition), condition
-		) as Data;
+		const [SQL, data] = Table.parseCondition(condition);
+		return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${SQL}`).get(data) as Data;
 	}
 
 	public select(condition: condition = null): Data[] {
 		if(condition === null){
 			return this.statements.selectAll.all() as Data[];
 		}
-		if(typeof condition === 'string'){
-			return this.statements.select.all(condition) as Data[];
-		}
 
-		return this.statements.select.all(
-			Table.prepareCondition(condition), condition
-		) as Data[];
-	}
-
-	public insert(values: Data): void{
-		this.statements.insert.run(
-			this.prepareValues(values)
-		);
+		const [SQL, data] = Table.parseCondition(condition);
+		return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${SQL}`).all(data) as Data[];
 	}
 
 	public replace(values: Data): void {
-		this.statements.replace.run(
-			this.prepareValues(values)
-		);
+		this.db.prepare(`REPLACE INTO [${this.name}] VALUES (${
+			Table.prepareValues(values)
+		})`).run(values);
 	}
 
-	public update(condition: condition, newValues: Data): void {
-		const v = [];
-
-		for(const column of this.columns.list){
-			v.push(column in newValues ? `@${column}` : column);
-		}
-
+	public update(condition: condition, values: Data): void {
 		if(condition === null){
-			this.statements.updateAll.run(v, newValues);
-		}else if(typeof condition === 'string'){
-			this.statements.update.run(v, newValues, condition);
-		}else{
-			this.statements.update.run(
-				v, newValues,
-				Table.prepareCondition(condition)
-			);
+			this.db.prepare(`UPDATE [${this.name}] SET ${
+				Table.prepareValues(values)
+			}`).run(values);
 		}
+
+		const [SQL, data] = Table.parseCondition(condition);
+
+		this.db.prepare(`UPDATE [${this.name}] SET ${
+			Table.prepareValues(values)
+		} WHERE ${SQL}`).run(values, data);
 	}
 
 	public delete(condition: condition = null): void {
 		if(condition === null){
 			this.statements.deleteAll.run();
-		}else if(typeof condition === 'string'){
-			this.statements.delete.run(condition);
-		}else{
-			this.statements.delete.run(Table.prepareCondition(condition), condition);
 		}
+
+		const [SQL, data] = Table.parseCondition(condition);
+
+		this.db.prepare(`DELETE FROM [${this.name}] WHERE ${SQL}`).run(data);
 	}
 }
 

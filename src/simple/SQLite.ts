@@ -1,6 +1,6 @@
 import type { RawOptions, DataObj, Value } from './base';
 import Base, { objUtil } from './base';
-import * as BETTER_SQLITE3 from 'better-sqlite3';
+import * as BSQL3 from 'better-sqlite3';
 
 interface entry {
 	key: string;
@@ -14,7 +14,7 @@ export default class Database extends Base{
 
 		let db = null;
 		try{
-			db = new BETTER_SQLITE3(opts.path);
+			db = new BSQL3(opts.path);
 		}catch(e){
 			throw new Error("introduced 'path' is not valid");
 		}
@@ -32,9 +32,8 @@ export default class Database extends Base{
 		if(this.cache) this._cache = this._getAll();
 	}
 	protected _cache: DataObj;
-
 	private readonly statements: {
-		[key: string]: BETTER_SQLITE3.Statement
+		[key: string]: BSQL3.Statement
 	};
 
 	private _getAll(): DataObj {

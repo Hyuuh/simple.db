@@ -19,7 +19,7 @@ export type value = Buffer | bigint | number | string | null;
 export interface Data {
 	[key: string | number]: value
 }
-export type condition = Data | string | null;
+export type condition = Data | string | null | ((...args: unknown[]) => unknown);
 
 type conflictClause = '' | ` ON CONFLICT ${'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE' | 'ROLLBACK'}`;
 type columnConstraint = '' |
