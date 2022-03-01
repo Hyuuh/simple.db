@@ -19,17 +19,6 @@ export interface Data {
 }
 export type condition = string | null | ((row: Data) => unknown);
 
-type conflictClause = '' | ` ON CONFLICT ${'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE' | 'ROLLBACK'}`;
-type columnConstraint = '' |
-	// `DEFAULT ${number | string}` |
-	`NOT NULL${conflictClause}` |
-	`PRIMARY KEY${' ASC' |' DESC' | ''}${conflictClause}${' AUTOINCREMENT' | ''}` |
-	`UNIQUE${conflictClause}`;
-
-type valueType = 'BLOB' | 'INTEGER' | 'NUMERIC' | 'REAL' | 'TEXT';
-export type column = string | [string, value?, columnConstraint?, valueType?];
-
-
 export class ColumnsManager extends Base{
 	constructor(db: BSQL3.Database, tableName: string){
 		super(db);
@@ -40,47 +29,34 @@ export class ColumnsManager extends Base{
 	public defaults: Data = {};
 	public _s: string;
 
-	public add(column: column): void {
-		this.db.prepare(`ALTER TABLE [${this.table}] ADD COLUMN ${
-			ColumnsManager.parse(column)
-		}`).run();
+	public add(column: string, defaultValue: value = null): void {
+		this.db.prepare(`ALTER TABLE [${this.table}] ADD COLUMN ${column}`).run();
 
-		ColumnsManager._add(column, this);
+		this.defaults[column] = defaultValue;
+		this.list.push(column);
+
+		this._s = this.list.join(', ');
 	}
 
 	public delete(name: string): void {
+		if(!this.list.includes(name)){
+			throw new Error(`Column '${name}' not found.`);
+		}
 		this.db.prepare(`ALTER TABLE [${this.table}] DROP COLUMN [${name}]`).run();
 
 		this.list.splice(this.list.indexOf(name), 1);
+		delete this.defaults[name];
 		this._s = this.list.join(', ');
 	}
 
 	public rename(oldName: string, newName: string): void {
 		this.db.prepare(`ALTER TABLE [${this.table}] RENAME COLUMN ${oldName} TO ${newName}`).run();
 
+		this.defaults[newName] = this.defaults[oldName];
+		delete this.defaults[oldName];
+
 		this.list[this.list.indexOf(oldName)] = newName;
-
 		this._s = this.list.join(', ');
-	}
-
-	public static parse(column: column): string {
-		if(typeof column === 'string'){
-			return `[${column}]`;
-		}
-
-		return `[${column[0]}] ${column[3] ?? 'BLOB'} ${column[2] ?? ''}`;
-	}
-
-	public static _add(column: column, CM: ColumnsManager): void {
-		if(typeof column === 'string'){
-			CM.defaults[column] = null;
-			CM.list.push(column);
-		}else{
-			CM.defaults[column[0]] = column[1] ?? null;
-			CM.list.push(column[0]);
-		}
-
-		CM._s = CM.list.join(', ');
 	}
 }
 

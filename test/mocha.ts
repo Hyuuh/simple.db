@@ -10,6 +10,7 @@ it('sqlite', () => {
 	const db = new Databases.SQLite({
 		path: 'test/database.sqlite',
 	});
+	db.optimize();
 
 	db.tables.delete('test');
 

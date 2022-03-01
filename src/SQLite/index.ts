@@ -1,7 +1,7 @@
 // eslint-disable-next-line max-classes-per-file
 import * as BSQL3 from 'better-sqlite3';
 import { Base, ColumnsManager, TransactionManager } from './utils';
-import type { Data, condition, column, value } from './utils';
+import type { Data, condition, value } from './utils';
 
 interface TableStatements {
 	selectAll: BSQL3.Statement;
@@ -21,7 +21,7 @@ class Table extends Base{
 		const columnsList = selectAll.columns().map(c => c.name);
 
 		this.statements = {
-			selectAll: this.db.prepare(`SELECT * FROM [${name}]`),
+			selectAll,
 			insert: this.db.prepare(`INSERT INTO [${name}] (${
 				columnsList.join(', ')
 			}) VALUES(${
@@ -59,6 +59,8 @@ class Table extends Base{
 
 		const ID = `F${lastID++}`;
 
+		if(lastID === Number.MAX_SAFE_INTEGER) lastID = 0;
+
 		this.db.function(
 			ID,
 			{ varargs: true, directOnly: true },
@@ -71,10 +73,18 @@ class Table extends Base{
 		return `${ID}(${this.columns._s})`;
 	}
 
-	public insert(values: Data): void {
-		this.statements.insert.run(
-			Object.assign({}, this.columns.defaults, values)
-		);
+	public insert(values: Data | Data[]): void {
+		if(Array.isArray(values)){
+			this.db.transaction(v => {
+				this.statements.insert.run(
+					Object.assign({}, this.columns.defaults, v)
+				);
+			})(values);
+		}else{
+			this.statements.insert.run(
+				Object.assign({}, this.columns.defaults, values)
+			);
+		}
 	}
 
 	public replace(values: Data, defaults = false): void {
@@ -144,21 +154,18 @@ class TablesManager extends Base{
 	}
 	public list: Record<string, Table> = {};
 
-	public create(name: string, columns: column[]): Table {
+	public create(name: string, columns: string[]): Table {
 		if(name in this.list) return this.list[name];
 		if(columns.length === 0){
 			throw new Error('columns are empty');
 		}
 
 		this.db.prepare(`CREATE TABLE IF NOT EXISTS [${name}] (${
-			columns.map(ColumnsManager.parse).join(', ')
+			columns.join(', ')
 		})`).run();
 
-		const table = new Table(this.db, name);
-		for(const c of columns) ColumnsManager._add(c, table.columns);
-
-		this.list[name] = table;
-		return table;
+		this.list[name] = new Table(this.db, name);
+		return this.list[name];
 	}
 
 	public get(name: string): Table {
@@ -178,12 +185,12 @@ class TablesManager extends Base{
 	}
 }
 
-interface Opts extends BSQL3.Options {
+interface Options extends BSQL3.Options {
 	path?: string;
 }
 
 export default class SQLite extends Base{
-	constructor(options: Opts = {}){
+	constructor(options: Options = {}){
 		super(new BSQL3(options.path || './database.sqlite', options));
 		this.transaction = new TransactionManager(this.db);
 		this.tables = new TablesManager(this.db);
@@ -209,23 +216,6 @@ export default class SQLite extends Base{
 		this.db.close();
 	}
 }
-
-/*
-const db = new Database({
-	path: './test/database.sqlite',
-});
-
-db.tables.delete('test');
-const table = db.tables.create('test', ['a', 'b', 'H', 'j', 'x']);
-
-table.insert({ a: NaN, b: 2, H: 'hello', j: Infinity, x: 3.3123131 });
-
-table.columns.add('c');
-table.columns.rename('a', 'f');
-table.columns.delete('b');
-
-console.log(table.select());
-*/
 
 // https://www.sqlite.org/lang.html
 // https://github.com/JoshuaWise/better-sqlite3/blob/master/docs/api.md
