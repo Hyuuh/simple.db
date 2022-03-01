@@ -3,7 +3,7 @@
 		"lib": ["ES7"],
 		"module": "commonjs",
 		"outDir": "./lib",
-		"target": "es6",
+		"target": "ESNext",
 
 		"sourceMap": true,
 		"declaration": true,

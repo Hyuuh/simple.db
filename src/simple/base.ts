@@ -1,8 +1,8 @@
-export type Value = Data | boolean | number | string | null | undefined;
+export type value = Data | boolean | number | string | null | undefined;
 export interface DataObj {
-	[key: number | string]: Value;
+	[key: number | string]: value;
 }
-export type Data = DataObj | Value[];
+export type Data = DataObj | value[];
 
 export type RawOptions = string | {
 	cache?: boolean;
@@ -48,7 +48,7 @@ class ArrayUtils{
 
 	private readonly db: Base;
 
-	public _getArray(key: string): Value[]{
+	public _getArray(key: string): value[]{
 		const arr = this.db.get(key);
 
 		if(!Array.isArray(arr)){
@@ -58,14 +58,14 @@ class ArrayUtils{
 		return arr;
 	}
 
-	public push(key: string, ...values: Value[]): Value[]{
+	public push(key: string, ...values: value[]): value[]{
 		let arr = this.db.get(key);
 
 		if(typeof arr === 'undefined' || arr === null){
 			arr = values;
 		}else{
 			if(!Array.isArray(arr)){
-				throw new Error(`Value stored in '${key}' is not an array`);
+				throw new Error(`value stored in '${key}' is not an array`);
 			}
 			arr.push(...values);
 		}
@@ -78,9 +78,9 @@ class ArrayUtils{
 	public extract(
 		key: string,
 		index: number | string | (
-			(value: Value, index: number, obj: Value[]) => unknown
+			(value: value, index: number, obj: value[]) => unknown
 		)
-	): Value {
+	): value {
 		const arr = this.db.get(key);
 
 		if(typeof arr === 'undefined') return;
@@ -99,11 +99,11 @@ class ArrayUtils{
 		}
 		if(index === -1) return;
 
-		const [Value] = arr.splice(index, 1);
+		const [value] = arr.splice(index, 1);
 
 		this.db.set(key, arr);
 
-		return Value;
+		return value;
 	}
 
 	// from here methods throw an error if the array does not exists
@@ -112,8 +112,8 @@ class ArrayUtils{
 		key: string,
 		start: number,
 		deleteCount: number,
-		...items: Value[]
-	): Value[] {
+		...items: value[]
+	): value[] {
 		const arr = this._getArray(key);
 		const values = arr.splice(start, deleteCount, ...items);
 
@@ -122,7 +122,7 @@ class ArrayUtils{
 		return values;
 	}
 
-	public random(key: string): Value{
+	public random(key: string): value{
 		const arr = this._getArray(key);
 		return arr[Math.floor(Math.random() * arr.length)];
 	}
@@ -131,7 +131,7 @@ class ArrayUtils{
 
 	public includes(
 		key: string,
-		searchElement: Value,
+		searchElement: value,
 		fromIndex?: number
 	): boolean {
 		return this._getArray(key).includes(searchElement, fromIndex);
@@ -139,15 +139,15 @@ class ArrayUtils{
 
 	public find(
 		key: string,
-		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
-	): Value {
+	): value {
 		return this._getArray(key).find(callback, thisArg);
 	}
 
 	public findIndex(
 		key: string,
-		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): number | -1{
 		return this._getArray(key).findIndex(callback, thisArg);
@@ -155,14 +155,14 @@ class ArrayUtils{
 
 	public sort(
 		key: string,
-		compareFn?: (a: Value, b: Value) => number
-	): Value[]{
+		compareFn?: (a: value, b: value) => number
+	): value[]{
 		return this._getArray(key).sort(compareFn);
 	}
 
 	public reduce(
 		key: string,
-		callback: (previousValue: unknown, currentValue: Value, currentIndex: number, array: Value[]) => unknown,
+		callback: (previousValue: unknown, currentValue: value, currentIndex: number, array: value[]) => unknown,
 		initialValue: unknown
 	): unknown{
 		return this._getArray(key).reduce(callback, initialValue);
@@ -170,15 +170,15 @@ class ArrayUtils{
 
 	public filter(
 		key: string,
-		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
-	): Value[]{
+	): value[]{
 		return this._getArray(key).filter(callback, thisArg);
 	}
 
 	public map(
 		key: string,
-		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): unknown[]{
 		return this._getArray(key).map(callback, thisArg);
@@ -186,7 +186,7 @@ class ArrayUtils{
 
 	public some(
 		key: string,
-		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): boolean{
 		return this._getArray(key).some(callback, thisArg);
@@ -194,7 +194,7 @@ class ArrayUtils{
 
 	public every(
 		key: string,
-		callback: (value: Value, index: number, obj: Value[]) => unknown,
+		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): boolean{
 		return this._getArray(key).every(callback, thisArg);
@@ -213,15 +213,15 @@ export default abstract class Base{
 	public get keys(): string[] {
 		return Object.keys(this.data);
 	}
-	public get values(): Value[] {
+	public get values(): value[] {
 		return Object.values(this.data);
 	}
-	public get entries(): Array<[string, Value]> {
+	public get entries(): Array<[string, value]> {
 		return Object.entries(this.data);
 	}
 
-	public abstract get(key: string): Value;
-	public abstract set(key: string, value: Value): void;
+	public abstract get(key: string): value;
+	public abstract set(key: string, value: value): void;
 	public abstract delete(key: string): void;
 	public abstract clear(): void;
 
@@ -265,26 +265,26 @@ database
 
 const regex = /\.{2,}|^\.|\.$/; // /\[(.*?)\]|[^.[]+/g; //
 export const objUtil = {
-	get(obj: Value, props: string[]): Value {
+	get(obj: value, props: string[]): value {
 		if(props.length === 0) return obj;
 
 		for(const prop of props){
 			if(typeof obj !== 'object' || obj === null){
-				throw new Error(`Value at ${props.join('.')} is not an object`);
+				throw new Error(`value at ${props.join('.')} is not an object`);
 			}
 
 			if(prop in obj){
 				// @ts-expect-error string as a index of an array
-				obj = obj[prop] as Value;
+				obj = obj[prop] as value;
 			}else return;
 		}
 
 		return obj;
 	},
-	set(obj: Value, props: string[], value: Value = null): Value {
+	set(obj: value, props: string[], value: value = null): value {
 		if(props.length === 0) return obj;
 		if(typeof obj !== 'object' || obj === null){
-			throw new Error(`Value at ${props.join('.')} is not an object`);
+			throw new Error(`value at ${props.join('.')} is not an object`);
 		}
 
 		const last = props.pop() as string;
@@ -292,7 +292,7 @@ export const objUtil = {
 		for(const prop of props){
 			if(prop in obj){
 				// @ts-expect-error string as a index of an array
-				obj = obj[prop] as Value;
+				obj = obj[prop] as value;
 			}else{
 				if(Array.isArray(obj)){
 					throw new Error("adding a value to an array in the 'set' method is forbidden");
@@ -301,7 +301,7 @@ export const objUtil = {
 			}
 
 			if(typeof obj !== 'object' || obj === null){
-				throw new Error(`Value at ${props.join('.')} is not an object`);
+				throw new Error(`value at ${props.join('.')} is not an object`);
 			}
 		}
 
@@ -314,7 +314,7 @@ export const objUtil = {
 
 		return obj;
 	},
-	delete(obj: Value, props: string[]): void {
+	delete(obj: value, props: string[]): void {
 		if(props.length === 0){
 			throw new Error('Invalid key');
 		}

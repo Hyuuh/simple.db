@@ -1,8 +1,8 @@
-import type { RawOptions, Data, Value } from './base';
+import type { RawOptions, Data, DataObj, value } from './base';
 import Base, { objUtil } from './base';
 import * as fs from 'fs';
 
-export default class Database extends Base{
+export default class SimpleJSON extends Base{
 	constructor(options?: RawOptions){
 		super();
 
@@ -26,12 +26,12 @@ export default class Database extends Base{
 		return readJSON(this.path);
 	}
 
-	public get(key: string): Value {
+	public get(key: string): value {
 		return objUtil.get(this.data, objUtil.parseKey(key));
 	}
 
-	public set(key: string, value: Value): void{
-		const data = objUtil.set(this.data, objUtil.parseKey(key), value) as Data;
+	public set(key: string, value: value): void{
+		const data = objUtil.set(this.data, objUtil.parseKey(key), value) as DataObj;
 
 		this._save(data);
 	}
@@ -49,7 +49,7 @@ export default class Database extends Base{
 	}
 }
 
-interface Options {
+export interface Options {
 	cache: boolean;
 	path: string;
 	check: boolean;
@@ -106,7 +106,7 @@ function writeJSON(path: string, data: Data, check = false){
 	}
 }
 
-function readJSON(path: string): Data{
+function readJSON(path: string): Data {
 	let data = null;
 
 	try{
@@ -116,7 +116,7 @@ function readJSON(path: string): Data{
 	}
 
 	try{
-		data = JSON.parse(data) as Data;
+		data = JSON.parse(data) as DataObj;
 	}catch(e){
 		throw new Error(`Error parsing JSON in '${path}'`);
 	}

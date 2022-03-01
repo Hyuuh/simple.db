@@ -409,7 +409,8 @@ module.exports = {
 						"after": true
 					},
 					"as": {
-						"before": true
+						"before": true,
+						"after": true
 					}
 				}
 			}
@@ -466,9 +467,6 @@ module.exports = {
 		"object-curly-spacing": [
 			"error",
 			"always",
-			{
-				"arraysInObjects": false
-			}
 		],
 		"quotes": "off",
 		"@typescript-eslint/quotes": [

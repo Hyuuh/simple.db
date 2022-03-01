@@ -1,7 +1,7 @@
 // eslint-disable-next-line max-classes-per-file
 import * as BSQL3 from 'better-sqlite3';
 import { Base, ColumnsManager, TransactionManager } from './utils';
-import type { Data, condition, column } from './utils';
+import type { Data, condition, column, value } from './utils';
 
 interface TableStatements {
 	selectAll: BSQL3.Statement;
@@ -11,23 +11,6 @@ interface TableStatements {
 
 let lastID = 0;
 
-function parseCondition(db: BSQL3.Database, condition: condition): string {
-	if(typeof condition === 'string') return condition;
-	if(typeof condition === 'function'){
-		const ID = lastID++;
-
-		db.function(
-			`F${ID}`,
-			// @ts-expect-error error on types from @types/better-sqlite3
-			{ varargs: true, deterministic: true, directOnly: true },
-			// eslint-disable-next-line no-confusing-arrow
-			(...args) => condition(...args) ? 1 : 0
-		);
-
-		return `${ID}()`;
-	}
-}
-
 class Table extends Base{
 	constructor(db: BSQL3.Database, name: string){
 		super(db);
@@ -36,11 +19,14 @@ class Table extends Base{
 
 		const selectAll = db.prepare(`SELECT * FROM [${name}]`);
 		const columnsList = selectAll.columns().map(c => c.name);
-		const namedColumns = columnsList.map(column => `@${column}`).join(', ');
 
 		this.statements = {
 			selectAll: this.db.prepare(`SELECT * FROM [${name}]`),
-			insert: this.db.prepare(`INSERT INTO [${name}] VALUES (${namedColumns})`),
+			insert: this.db.prepare(`INSERT INTO [${name}] (${
+				columnsList.join(', ')
+			}) VALUES(${
+				columnsList.map(c => `@${c}`).join(', ')
+			})`),
 			deleteAll: this.db.prepare(`DELETE FROM [${name}]`),
 		};
 	}
@@ -48,8 +34,41 @@ class Table extends Base{
 	public columns: ColumnsManager;
 	private readonly statements: TableStatements;
 
-	public static prepareValues(values: Data): string {
-		return Object.keys(values).map(k => `@${k}`).join(', ');
+	public static prepareValues(values: Data, forSet?: boolean): string {
+		const keys = Object.keys(values);
+
+		if(forSet){
+			return keys.map(key => `${key} = @${key}`).join(', ');
+		}
+
+		return `(${keys.join(', ')}) VALUES(${
+			keys.map(k => `@${k}`).join(', ')
+		})`;
+	}
+
+	private _objectifyRow(row: value[]): Data {
+		return row.reduce<Data>((acc, arg, i) => {
+			acc[this.columns.list[i]] = arg;
+			return acc;
+		}, {});
+	}
+
+	private prepareCondition(condition: condition): string {
+		if(condition === null) return '1';
+		if(typeof condition === 'string') return condition;
+
+		const ID = `F${lastID++}`;
+
+		this.db.function(
+			ID,
+			{ varargs: true, directOnly: true },
+			// eslint-disable-next-line @typescript-eslint/no-extra-parens
+			(...args: value[]) => (
+				condition(this._objectifyRow(args)) ? 1 : 0
+			)
+		);
+
+		return `${ID}(${this.columns._s})`;
 	}
 
 	public insert(values: Data): void {
@@ -58,13 +77,24 @@ class Table extends Base{
 		);
 	}
 
+	public replace(values: Data, defaults = false): void {
+		this.db.prepare(`REPLACE INTO [${this.name}] ${
+			Table.prepareValues(values)
+		}`).run(
+			defaults ?
+				Object.assign({}, this.columns.defaults, values) :
+				values
+		);
+	}
+
 	public get(condition: condition = null): Data {
 		if(condition === null){
 			return this.statements.selectAll.get() as Data;
 		}
 
-		const [SQL, data] = Table.parseCondition(condition);
-		return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${SQL}`).get(data) as Data;
+		return this.db.prepare(
+			`SELECT * FROM [${this.name}] WHERE ${this.prepareCondition(condition)}`
+		).get() as Data;
 	}
 
 	public select(condition: condition = null): Data[] {
@@ -72,28 +102,23 @@ class Table extends Base{
 			return this.statements.selectAll.all() as Data[];
 		}
 
-		const [SQL, data] = Table.parseCondition(condition);
-		return this.db.prepare(`SELECT * FROM [${this.name}] WHERE ${SQL}`).all(data) as Data[];
-	}
-
-	public replace(values: Data): void {
-		this.db.prepare(`REPLACE INTO [${this.name}] VALUES (${
-			Table.prepareValues(values)
-		})`).run(values);
+		return this.db.prepare(
+			`SELECT * FROM [${this.name}] WHERE ${this.prepareCondition(condition)}`
+		).all() as Data[];
 	}
 
 	public update(condition: condition, values: Data): void {
 		if(condition === null){
 			this.db.prepare(`UPDATE [${this.name}] SET ${
-				Table.prepareValues(values)
+				Table.prepareValues(values, true)
 			}`).run(values);
 		}
 
-		const [SQL, data] = Table.parseCondition(condition);
-
 		this.db.prepare(`UPDATE [${this.name}] SET ${
-			Table.prepareValues(values)
-		} WHERE ${SQL}`).run(values, data);
+			Table.prepareValues(values, true)
+		} WHERE ${
+			this.prepareCondition(condition)
+		}`).run(values);
 	}
 
 	public delete(condition: condition = null): void {
@@ -101,9 +126,9 @@ class Table extends Base{
 			this.statements.deleteAll.run();
 		}
 
-		const [SQL, data] = Table.parseCondition(condition);
-
-		this.db.prepare(`DELETE FROM [${this.name}] WHERE ${SQL}`).run(data);
+		this.db.prepare(`DELETE FROM [${this.name}] WHERE ${
+			this.prepareCondition(condition)
+		}`).run();
 	}
 }
 
@@ -126,7 +151,7 @@ class TablesManager extends Base{
 		}
 
 		this.db.prepare(`CREATE TABLE IF NOT EXISTS [${name}] (${
-			columns.map(c => ColumnsManager.parse(c)).join(', ')
+			columns.map(ColumnsManager.parse).join(', ')
 		})`).run();
 
 		const table = new Table(this.db, name);
@@ -157,7 +182,7 @@ interface Opts extends BSQL3.Options {
 	path?: string;
 }
 
-export default class Database extends Base{
+export default class SQLite extends Base{
 	constructor(options: Opts = {}){
 		super(new BSQL3(options.path || './database.sqlite', options));
 		this.transaction = new TransactionManager(this.db);
@@ -178,6 +203,10 @@ export default class Database extends Base{
 	public optimize(): void {
 		this.pragma('optimize');
 		this.run('VACUUM');
+	}
+
+	public close(): void {
+		this.db.close();
 	}
 }
 

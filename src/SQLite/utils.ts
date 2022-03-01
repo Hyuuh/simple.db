@@ -13,13 +13,11 @@ export class Base{
 	protected readonly db: BSQL3.Database;
 }
 
-
-type valueType = 'BLOB' | 'INTEGER' | 'NUMERIC' | 'REAL' | 'TEXT';
 export type value = Buffer | bigint | number | string | null;
 export interface Data {
 	[key: string | number]: value
 }
-export type condition = Data | string | null | ((...args: unknown[]) => unknown);
+export type condition = string | null | ((row: Data) => unknown);
 
 type conflictClause = '' | ` ON CONFLICT ${'ABORT' | 'FAIL' | 'IGNORE' | 'REPLACE' | 'ROLLBACK'}`;
 type columnConstraint = '' |
@@ -28,7 +26,9 @@ type columnConstraint = '' |
 	`PRIMARY KEY${' ASC' |' DESC' | ''}${conflictClause}${' AUTOINCREMENT' | ''}` |
 	`UNIQUE${conflictClause}`;
 
+type valueType = 'BLOB' | 'INTEGER' | 'NUMERIC' | 'REAL' | 'TEXT';
 export type column = string | [string, value?, columnConstraint?, valueType?];
+
 
 export class ColumnsManager extends Base{
 	constructor(db: BSQL3.Database, tableName: string){
@@ -38,6 +38,7 @@ export class ColumnsManager extends Base{
 	public list: string[] = [];
 	public table: string;
 	public defaults: Data = {};
+	public _s: string;
 
 	public add(column: column): void {
 		this.db.prepare(`ALTER TABLE [${this.table}] ADD COLUMN ${
@@ -51,12 +52,15 @@ export class ColumnsManager extends Base{
 		this.db.prepare(`ALTER TABLE [${this.table}] DROP COLUMN [${name}]`).run();
 
 		this.list.splice(this.list.indexOf(name), 1);
+		this._s = this.list.join(', ');
 	}
 
 	public rename(oldName: string, newName: string): void {
 		this.db.prepare(`ALTER TABLE [${this.table}] RENAME COLUMN ${oldName} TO ${newName}`).run();
 
 		this.list[this.list.indexOf(oldName)] = newName;
+
+		this._s = this.list.join(', ');
 	}
 
 	public static parse(column: column): string {
@@ -75,6 +79,8 @@ export class ColumnsManager extends Base{
 			CM.defaults[column[0]] = column[1] ?? null;
 			CM.list.push(column[0]);
 		}
+
+		CM._s = CM.list.join(', ');
 	}
 }
 

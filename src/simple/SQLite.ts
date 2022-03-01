@@ -1,4 +1,4 @@
-import type { RawOptions, DataObj, Value } from './base';
+import type { RawOptions, DataObj, value } from './base';
 import Base, { objUtil } from './base';
 import * as BSQL3 from 'better-sqlite3';
 
@@ -7,7 +7,7 @@ interface entry {
 	value: string;
 }
 
-export default class Database extends Base{
+export default class SimpleSQLite extends Base{
 	constructor(options?: RawOptions){
 		super();
 		const opts = parseOptions(options);
@@ -30,18 +30,20 @@ export default class Database extends Base{
 			get: db.prepare(`SELECT * FROM [${opts.name}] WHERE key = ?`),
 		};
 		if(this.cache) this._cache = this._getAll();
+
+		this.close = db.close.bind(db) as () => void;
 	}
-	protected _cache: DataObj;
+	declare protected _cache: DataObj;
 	private readonly statements: {
 		[key: string]: BSQL3.Statement
 	};
 
 	private _getAll(): DataObj {
 		return this.statements.getAll.all().reduce<DataObj>((
-			acc: { [key: string]: Value },
+			acc: { [key: string]: value },
 			{ key, value }: { key: string, value: string }
 		) => {
-			acc[key] = JSON.parse(value) as Value;
+			acc[key] = JSON.parse(value) as value;
 
 			return acc;
 		}, {});
@@ -53,7 +55,7 @@ export default class Database extends Base{
 		return this._getAll();
 	}
 
-	private _get(key: string): Value {
+	private _get(key: string): value {
 		if(this.cache){
 			return this._cache[key];
 		}
@@ -61,18 +63,18 @@ export default class Database extends Base{
 		const entry = this.statements.get.get(key) as entry;
 		if(!entry) return;
 
-		return JSON.parse(entry.value) as Value;
+		return JSON.parse(entry.value) as value;
 	}
-	public get(key: string): Value {
+	public get(key: string): value {
 		const [k, ...props] = objUtil.parseKey(key);
 
 		return objUtil.get(this._get(k), props);
 	}
 
-	private _set(key: string, value: Value): void {
+	private _set(key: string, value: value): void {
 		this.statements.set.run(key, JSON.stringify(value));
 	}
-	public set(key: string, value: Value): void {
+	public set(key: string, value: value): void {
 		const [k, ...props] = objUtil.parseKey(key);
 
 		if(props.length){
@@ -112,9 +114,11 @@ export default class Database extends Base{
 		this.statements.clear.run();
 		this._cache = {};
 	}
+
+	public close: () => void;
 }
 
-interface Options {
+export interface Options {
 	cache: boolean;
 	path: string;
 	name: string;
