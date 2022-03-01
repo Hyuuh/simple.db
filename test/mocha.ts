@@ -63,8 +63,8 @@ describe('simple', () => {
 		db.set('baz.b.1', 'foo');
 		expect(db.get('baz'), { b: [1, 'foo', 3] });
 
-		db.clear();
-		expect(db.data, {});
+		// db.clear();
+		// expect(db.data, {});
 		if('close' in db) db.close();
 	}
 
@@ -94,6 +94,7 @@ after(() => {
 		if(existsSync(path)) unlinkSync(path);
 	}
 });
+
 
 function expect(value: unknown, expectedValue?: unknown): void {
 	if(typeof value === 'function'){

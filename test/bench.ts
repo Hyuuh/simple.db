@@ -1,7 +1,11 @@
 /* eslint-disable */
 import { Suite } from 'benchmark';
 import * as Databases from '../src/';
+import { unlinkSync, existsSync } from 'fs';
 
+if(existsSync('test/database.sqlite')){
+	unlinkSync('test/database.sqlite');
+}
 const db = new Databases.SQLite({
 	path: 'test/database.sqlite',
 });
@@ -32,7 +36,7 @@ new Suite('select')
 	.add('sql', () => {
 		table.select('a < b AND b < c')
 	})
-	.add('null', () => {
+	.add('all', () => {
 		table.select()
 	})
 	.on('start', initializeBench)
@@ -47,7 +51,7 @@ new Suite('select in transaction')
 	.add('sql', () => {
 		table.select('a < b AND b < c')
 	})
-	.add('null', () => {
+	.add('all', () => {
 		table.select()
 	})
 	.on('start', initializeBench)
@@ -61,31 +65,15 @@ db.transaction.commit();
 
 new Suite('insert')
 	.add('many (transaction)', () => {
-		table.insert(values);
+		table.insert(values.slice(0, 10));
 	})
 	.add('each', () => {
-		for(const value of values){
+		for(const value of values.slice(0, 10)){
 			table.insert(value);
 		}
 	})
 	.on('start', initializeBench)
 	.run();
-
-db.transaction.begin();
-
-new Suite('insert in transaction')
-	.add('many (transaction)', () => {
-		table.insert(values);
-	})
-	.add('sql', () => {
-		for(const value of values){
-			table.insert(value);
-		}
-	})
-	.on('start', initializeBench)
-	.run();
-
-db.transaction.commit();
 
 // #endregion
 
@@ -133,3 +121,6 @@ function initializeBench(){
 		console.log();
 	});
 }
+
+db.close();
+unlinkSync('test/database.sqlite');

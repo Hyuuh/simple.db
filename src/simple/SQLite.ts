@@ -79,7 +79,8 @@ export default class SimpleSQLite extends Base{
 
 		if(props.length){
 			const data = this._get(k);
-			this._set(k, objUtil.set(data, props, value));
+			objUtil.set(data, props, value);
+			this._set(k, data);
 		}else{
 			if(this.cache) this._cache[k] = value;
 			this._set(k, value);

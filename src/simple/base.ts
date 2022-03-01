@@ -281,38 +281,32 @@ export const objUtil = {
 
 		return obj;
 	},
-	set(obj: value, props: string[], value: value = null): value {
-		if(props.length === 0) return obj;
+	set(obj: value, props: string[], value: value = null): void {
+		if(props.length === 0) return;
 		if(typeof obj !== 'object' || obj === null){
 			throw new Error(`value at ${props.join('.')} is not an object`);
 		}
 
 		const last = props.pop() as string;
 
-		for(const prop of props){
-			if(prop in obj){
-				// @ts-expect-error string as a index of an array
-				obj = obj[prop] as value;
-			}else{
-				if(Array.isArray(obj)){
-					throw new Error("adding a value to an array in the 'set' method is forbidden");
-				}
-				obj = obj[prop] = {};
-			}
-
-			if(typeof obj !== 'object' || obj === null){
+		const final = props.reduce<value>((o, prop: string) => {
+			if(typeof o !== 'object' || o === null){
 				throw new Error(`value at ${props.join('.')} is not an object`);
 			}
-		}
+
+			if(prop in o){
+				// @ts-expect-error string as a index of an array
+				return o[prop] as value;
+			}
+			return null;
+		}, obj);
 
 		// @ts-expect-error comparing string with number
-		if(Array.isArray(obj) && last >= obj.length){
+		if(Array.isArray(final) && last >= final.length){
 			throw new Error("adding a value to an array in the 'set' method is forbidden");
 		}
 		// @ts-expect-error string as a index of an array
-		obj[last] = value;
-
-		return obj;
+		final[last] = value;
 	},
 	delete(obj: value, props: string[]): void {
 		if(props.length === 0){

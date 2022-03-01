@@ -30,10 +30,12 @@ export default class SimpleJSON extends Base{
 		return objUtil.get(this.data, objUtil.parseKey(key));
 	}
 
-	public set(key: string, value: value): void{
-		const data = objUtil.set(this.data, objUtil.parseKey(key), value) as DataObj;
+	public set(key: string, value: value): void {
+		const d = this.data;
+		objUtil.set(d, objUtil.parseKey(key), value);
 
-		this._save(data);
+
+		this._save(d);
 	}
 
 	public delete(key: string): void{
