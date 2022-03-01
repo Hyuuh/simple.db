@@ -20,9 +20,12 @@ export interface Data {
 export type condition = string | null | ((row: Data) => unknown);
 
 export class ColumnsManager extends Base{
-	constructor(db: BSQL3.Database, tableName: string){
+	constructor(db: BSQL3.Database, tableName: string, list: string[]){
 		super(db);
 		this.table = tableName;
+
+		this.list = list;
+		this._s = list.join(', ');
 	}
 	public list: string[] = [];
 	public table: string;

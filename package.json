@@ -8,6 +8,7 @@
 	"deprecated": false,
 	"scripts": {
 		"node": "ts-node src/index.ts",
+		"bench": "ts-node test/bench.ts",
 		"test": "mocha -r ts-node/register test/mocha.ts",
 		"lint": "npx eslint . --fix"
 	},
@@ -36,6 +37,7 @@
 		"better-sqlite3": "^7.5.0"
 	},
 	"devDependencies": {
+		"@types/benchmark": "^2.1.1",
 		"@types/better-sqlite3": "^7.4.2",
 		"@types/mocha": "^9.1.0",
 		"@typescript-eslint/eslint-plugin": "^5.12.1",

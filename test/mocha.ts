@@ -35,7 +35,7 @@ it('sqlite', () => {
 });
 
 describe('simple', () => {
-	function testSimple(db: Databases.simpleJSON | Databases.simpleSQLite): void {
+	function testSimple(db: Databases.SimpleJSON | Databases.SimpleSQLite): void {
 		db.clear();
 		expect(db.data, {});
 

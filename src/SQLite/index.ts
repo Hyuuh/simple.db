@@ -6,6 +6,7 @@ import type { Data, condition, value } from './utils';
 interface TableStatements {
 	selectAll: BSQL3.Statement;
 	insert: BSQL3.Statement;
+	insertMany: BSQL3.Transaction;
 	deleteAll: BSQL3.Statement;
 }
 
@@ -15,10 +16,10 @@ class Table extends Base{
 	constructor(db: BSQL3.Database, name: string){
 		super(db);
 		this.name = name;
-		this.columns = new ColumnsManager(db, name);
 
 		const selectAll = db.prepare(`SELECT * FROM [${name}]`);
 		const columnsList = selectAll.columns().map(c => c.name);
+		this.columns = new ColumnsManager(db, name, columnsList);
 
 		this.statements = {
 			selectAll,
@@ -27,6 +28,11 @@ class Table extends Base{
 			}) VALUES(${
 				columnsList.map(c => `@${c}`).join(', ')
 			})`),
+			insertMany: this.db.transaction(values => {
+				for(const value of values) this.statements.insert.run(
+					Object.assign({}, this.columns.defaults, value)
+				);
+			}),
 			deleteAll: this.db.prepare(`DELETE FROM [${name}]`),
 		};
 	}
@@ -75,11 +81,7 @@ class Table extends Base{
 
 	public insert(values: Data | Data[]): void {
 		if(Array.isArray(values)){
-			this.db.transaction(v => {
-				this.statements.insert.run(
-					Object.assign({}, this.columns.defaults, v)
-				);
-			})(values);
+			this.statements.insertMany(values);
 		}else{
 			this.statements.insert.run(
 				Object.assign({}, this.columns.defaults, values)

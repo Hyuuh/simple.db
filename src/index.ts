@@ -1,21 +1,21 @@
 import SQLite from './SQLite/index';
-import simpleSQLite from './simple/SQLite';
-import simpleJSON from './simple/JSON';
+import SimpleSQLite from './simple/SQLite';
+import SimpleJSON from './simple/JSON';
 
 const simple = {
-	SQLite: simpleSQLite,
-	JSON: simpleJSON,
+	SQLite: SimpleSQLite,
+	JSON: SimpleJSON,
 } as const;
 
 export {
 	SQLite,
-	simpleSQLite,
-	simpleJSON,
+	SimpleSQLite,
+	SimpleJSON,
 	simple
 };
 export default {
 	SQLite,
-	simpleSQLite,
-	simpleJSON,
+	SimpleSQLite,
+	SimpleJSON,
 	simple,
 } as const;
