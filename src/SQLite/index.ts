@@ -180,9 +180,7 @@ class TablesManager extends Base{
 		defaultValues: Data = {}
 	): Table {
 		if(name in this.list) return this.list[name];
-		if(columns.length === 0){
-			throw new Error('columns are empty');
-		}
+		if(columns.length === 0) throw new Error('columns are empty');
 
 		this.db.prepare(`CREATE TABLE IF NOT EXISTS [${name}] (${
 			columns.join(', ')

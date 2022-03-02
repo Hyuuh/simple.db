@@ -3,8 +3,7 @@
 /* eslint-env mocha */
 import 'mocha';
 import * as Databases from '../src/';
-import { unlinkSync, existsSync } from 'fs';
-import { deepStrictEqual } from 'assert';
+import { expect, existsSync, unlinkSync } from './utils';
 
 it('sqlite', () => {
 	const db = new Databases.SQLite({
@@ -71,11 +70,11 @@ describe('simple', () => {
 
 		expect(db.values[2], { xd: 130 });
 
-
 		// array utils
 
 		db.array.push('t', 1, 2, 3, 4, 5);
 		expect(
+			// @ts-expect-error assuming that value is a number
 			db.array.extract('t', (v: number) => v > 3),
 			4
 		);
@@ -123,20 +122,3 @@ after(() => {
 		if(existsSync(path)) unlinkSync(path);
 	}
 });
-
-function expect(value: unknown, expectedValue?: unknown): void {
-	if(typeof value === 'function'){
-		let hadError = false;
-		try{
-			value();
-		}catch(e){
-			hadError = true;
-		}
-
-		if(!hadError){
-			throw new Error('expected function to throw an error');
-		}
-	}else{
-		deepStrictEqual(value, expectedValue);
-	}
-}

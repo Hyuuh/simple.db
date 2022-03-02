@@ -1,3 +1,110 @@
+
+# Quick example
+
+```js
+const Database = require('simplest.db');
+const db = new Database({
+    path: './test.json'
+})
+
+db.set('ABC', null)
+db.set('foo.bar', [123, 456])
+
+console.log(db.data);
+/*
+{
+    ABC: null,
+    foo: {
+        bar: [123, 456]
+    }
+}
+*/
+
+db.get('foo.bar[0]') //123
+db.numbers.add('foo.bar[1]', 4) //460
+db.array.push('foo.bar', 800) //[123, 460, 800]
+
+console.log(db);
+/*
+Database {
+    ABC: null,
+    foo: {
+        bar: [123, 460, 800]
+    }
+}
+*/
+
+console.log(db.entries)
+/*
+[
+    {
+        key: 'ABC',
+        value: null
+    }, 
+    {
+        key: 'foo',
+        value: {
+            bar: [123, 460, 800]
+        }
+    }
+]
+*/
+
+console.log(db.keys)
+//['ABC', 'foo']
+
+console.log(db.values)
+/*
+[
+    null, 
+    {
+        bar: [123, 460, 800]
+    }
+]
+*/
+
+
+db.delete('foo.bar')
+
+/*
+Database {
+    ABC: null
+    foo: {}
+}
+*/
+
+db.clear()
+
+//Database {}
+```
+
+# Index
+* [Database](#database)
+    * [set](#set-get-and-delete)
+    * [get](#set-get-and-delete)
+    * [delete](#set-get-and-delete)
+    * [clear]()
+    * [keys]()
+    * [values]()
+    * [entries]()
+    * [number]()
+        * [add]()
+        * [subtract]()
+    * [array]()
+        * [push]()
+        * [extract]()
+        * [splice]()
+        * [includes]()
+        * [find]()
+        * [findIndex]()
+        * [filter]()
+        * [map]()
+        * [sort]()
+        * [some]()
+        * [every]()
+        * [reduce]()
+        * [random]()
+
 # Database
 ```js
 new Database(options);
@@ -76,31 +183,6 @@ db.set('abc.def', false);
 ```
 
 if you understood this, you can use this even to your advantage
-
-
-## `key` and `value`
-
-Values can be anything, you only have to take in account 1 thing, 
-they are stored as JSON, you should read [this](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify), in the `description` section, to understand how is it going to be stored.
-
-The keys must be strings, they are parsed between dots `.` and brackets `[]`
-Example:
-
-`something.abc[0]` is parsed like `something abc 0`.  
-So, you must understand this:
-```js
-db.set('something.abc[0]', null)
-
-/*
-Database {
-    something: {
-        abc: {
-            '0': null
-        }
-    }
-}
-*/
-```
 
 # Methods
 

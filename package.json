@@ -8,8 +8,9 @@
 	"deprecated": false,
 	"scripts": {
 		"node": "ts-node src/index.ts",
-		"bench": "ts-node test/bench.ts --timeout 5000",
-		"test": "mocha -r ts-node/register test/mocha.ts",
+		"bench": "ts-node test/bench.ts",
+		"comp": "ts-node test/comparision.ts",
+		"test": "mocha -r ts-node/register test/mocha.ts --timeout 5000",
 		"lint": "npx eslint . --fix"
 	},
 	"keywords": [
@@ -44,7 +45,9 @@
 		"@typescript-eslint/parser": "^5.12.1",
 		"benchmark": "^2.1.4",
 		"eslint": "^7.32.0",
+		"megadb": "^3.4.0",
 		"mocha": "^9.2.1",
+		"quick.db": "^7.1.3",
 		"ts-node": "^10.5.0",
 		"typescript": "^4.0.3"
 	},

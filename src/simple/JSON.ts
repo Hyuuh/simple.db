@@ -1,84 +1,42 @@
-import type { RawOptions, Data, DataObj, value } from './base';
-import Base, { objUtil } from './base';
+import type { Data, DataObj } from './base';
+import Base from './base';
 import * as fs from 'fs';
 
 export default class SimpleJSON extends Base{
-	constructor(options?: RawOptions){
+	constructor(path = './simple-db.sqlite', check = false){
 		super();
 
-		const opts = parseOptions(options);
-
-		Object.assign(this, opts);
-		if(!fs.existsSync(opts.path)){
-			fs.writeFileSync(opts.path, '{}');
+		if(!fs.existsSync(path)){
+			fs.writeFileSync(path, '{}');
 		}
 
-		if(this.cache) this._cache = readJSON(this.path);
+		this.path = path;
+		this.check = check;
+		this.data = readJSON(this.path);
 	}
 	private readonly path: string;
-	private readonly check = false;
+	private readonly check: boolean;
 
-	private _save(data: Data){
-		writeJSON(this.path, data, this.check);
-	}
-	public get data(): Data {
-		if(this.cache) return this._cache;
-		return readJSON(this.path);
-	}
+	private _saveQueued = false;
+	protected _queueSave(): void {
+		if(this._saveQueued) return;
 
-	public get(key: string): value {
-		return objUtil.get(this.data, objUtil.parseKey(key));
-	}
-
-	public set(key: string, value: value): void {
-		const d = this.data;
-		objUtil.set(d, objUtil.parseKey(key), value);
-
-		this._save(d);
+		this._saveQueued = true;
+		setTimeout(() => {
+			this.save();
+			this._saveQueued = false;
+		}, 100);
 	}
 
-	public delete(key: string): void{
-		const d = this.data;
-		objUtil.delete(d, objUtil.parseKey(key));
-
-		this._save(d);
+	public save(){
+		writeJSON(this.path, this.data, this.check);
+		this.save();
 	}
 
-	public clear(): void{
-		this._cache = Array.isArray(this.data) ? [] : {};
-		writeJSON(this.path, this._cache);
+	public reload(){
+		this.save();
+		this.data = readJSON(this.path);
 	}
-}
-
-export interface Options {
-	cache: boolean;
-	path: string;
-	check: boolean;
-}
-
-const DEFAULT_OPTIONS: Options = {
-	cache: true,
-	path: './simple-db.json',
-	check: false,
-};
-
-function parseOptions(options: RawOptions = {}): Options {
-	if(typeof options === 'string') options = { path: options };
-	if(typeof options !== 'object'){
-		throw new Error('the database options should be an object or a string with the path');
-	}
-
-	options = Object.assign({}, DEFAULT_OPTIONS, options);
-
-	if(typeof options.path !== 'string'){
-		throw new Error('the database path should be a string');
-	}else if(typeof options.cache !== 'boolean'){
-		throw new Error('the cache option should be a boolean');
-	}else if(typeof options.check !== 'boolean'){
-		throw new Error("'check' should be a boolean value");
-	}
-
-	return options as Options;
 }
 
 function writeJSON(path: string, data: Data, check = false){

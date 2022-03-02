@@ -4,13 +4,6 @@ export interface DataObj {
 }
 export type Data = DataObj | value[];
 
-export type RawOptions = string | {
-	cache?: boolean;
-	path?: string;
-	check?: boolean;
-	name?: string;
-};
-
 class NumberUtils{
 	constructor(db: Base){
 		this.db = db;
@@ -129,6 +122,17 @@ class ArrayUtils{
 
 	// from here methods throw an error if the array does not exists
 
+	public sort(
+		key: string,
+		compareFn?: (a: value, b: value) => number
+	): value[]{
+		const sorted = this._getArray(key).sort(compareFn);
+
+		this.db.set(key, sorted);
+
+		return sorted;
+	}
+
 	public includes(
 		key: string,
 		searchElement: value,
@@ -151,13 +155,6 @@ class ArrayUtils{
 		thisArg?: unknown
 	): number | -1{
 		return this._getArray(key).findIndex(callback, thisArg);
-	}
-
-	public sort(
-		key: string,
-		compareFn?: (a: value, b: value) => number
-	): value[]{
-		return this._getArray(key).sort(compareFn);
 	}
 
 	public reduce(
@@ -200,68 +197,6 @@ class ArrayUtils{
 		return this._getArray(key).every(callback, thisArg);
 	}
 }
-
-export default abstract class Base{
-	constructor(){
-		this.array = new ArrayUtils(this);
-		this.number = new NumberUtils(this);
-	}
-	protected _cache: Data;
-	protected cache = true;
-
-	public abstract get data(): Data;
-	public get keys(): string[] {
-		return Object.keys(this.data);
-	}
-	public get values(): value[] {
-		return Object.values(this.data);
-	}
-	public get entries(): Array<[string, value]> {
-		return Object.entries(this.data);
-	}
-
-	public abstract get(key: string): value;
-	public abstract set(key: string, value: value): void;
-	public abstract delete(key: string): void;
-	public abstract clear(): void;
-
-	public array: ArrayUtils;
-	public number: NumberUtils;
-
-	public toJSON(indentation = ''): string{
-		return JSON.stringify(this.data, null, indentation);
-	}
-}
-
-/*
-database
-	|--get*
-	|--set*
-	|--delete*
-	|--clear*
-	|--array
-	|    |--push*
-	|    |--extract*
-	|    |--splice*
-	|    |--includes
-	|    |--find
-	|    |--findIndex
-	|    |--filter
-	|    |--map
-	|    |--sort
-	|    |--some
-	|    |--every
-	|    |--reduce
-	|    |--random
-	|
-	|--number
-	|    |--add*
-	|    |--subtract*
-	|
-	|--keys
-	|--values
-	|--entries
-*/
 
 const regex = /\.{2,}|^\.|\.$/; // /\[(.*?)\]|[^.[]+/g; //
 export const objUtil = {
@@ -342,9 +277,89 @@ export const objUtil = {
 			throw new Error('\'key\' is not valid');
 		}
 
-		return key.split('.');
+		return key.split(/\.|\[(\d)\]/).filter(x => x);
 	},
 };
+
+export default abstract class Base{
+	constructor(){
+		this.array = new ArrayUtils(this);
+		this.number = new NumberUtils(this);
+	}
+
+	public data: Data;
+	public get keys(): string[] {
+		return Object.keys(this.data);
+	}
+	public get values(): value[] {
+		return Object.values(this.data);
+	}
+	public get entries(): Array<[string, value]> {
+		return Object.entries(this.data);
+	}
+
+	public get(key: string): value {
+		return objUtil.get(this.data, objUtil.parseKey(key));
+	}
+
+	public set(key: string, value: value): void {
+		objUtil.set(this.data, objUtil.parseKey(key), value);
+
+		this._queueSave();
+	}
+
+	public delete(key: string): void{
+		objUtil.delete(this.data, objUtil.parseKey(key));
+
+		this._queueSave();
+	}
+
+	public clear(): void{
+		this.data = Array.isArray(this.data) ? [] : {};
+		this.save();
+	}
+
+	public abstract save(): void;
+	protected abstract _queueSave(): void;
+
+	public array: ArrayUtils;
+	public number: NumberUtils;
+
+	public toJSON(indentation = ''): string{
+		return JSON.stringify(this.data, null, indentation);
+	}
+}
+
+/*
+database
+	|--get*
+	|--set*
+	|--delete*
+	|--clear*
+	|--array
+	|    |--push*
+	|    |--extract*
+	|    |--splice*
+	|    |--includes
+	|    |--find
+	|    |--findIndex
+	|    |--filter
+	|    |--map
+	|    |--sort
+	|    |--some
+	|    |--every
+	|    |--reduce
+	|    |--random
+	|
+	|--number
+	|    |--add*
+	|    |--subtract*
+	|
+	|--keys
+	|--values
+	|--entries
+*/
+
 
 /*
 function parseKey(key){
