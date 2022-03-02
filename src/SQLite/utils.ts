@@ -24,18 +24,24 @@ export class ColumnsManager extends Base{
 		super(db);
 		this.table = tableName;
 
+		for(const column of list){
+			if(!(column in this.defaultValues)){
+				this.defaultValues[column] = null;
+			}
+		}
+
 		this.list = list;
 		this._s = list.join(', ');
 	}
+	private readonly table: string;
 	public list: string[] = [];
-	public table: string;
-	public defaults: Data = {};
+	public defaultValues: Data = {};
 	public _s: string;
 
 	public add(column: string, defaultValue: value = null): void {
 		this.db.prepare(`ALTER TABLE [${this.table}] ADD COLUMN ${column}`).run();
 
-		this.defaults[column] = defaultValue;
+		this.defaultValues[column] = defaultValue;
 		this.list.push(column);
 
 		this._s = this.list.join(', ');
@@ -48,15 +54,15 @@ export class ColumnsManager extends Base{
 		this.db.prepare(`ALTER TABLE [${this.table}] DROP COLUMN [${name}]`).run();
 
 		this.list.splice(this.list.indexOf(name), 1);
-		delete this.defaults[name];
+		delete this.defaultValues[name];
 		this._s = this.list.join(', ');
 	}
 
 	public rename(oldName: string, newName: string): void {
 		this.db.prepare(`ALTER TABLE [${this.table}] RENAME COLUMN ${oldName} TO ${newName}`).run();
 
-		this.defaults[newName] = this.defaults[oldName];
-		delete this.defaults[oldName];
+		this.defaultValues[newName] = this.defaultValues[oldName];
+		delete this.defaultValues[oldName];
 
 		this.list[this.list.indexOf(oldName)] = newName;
 		this._s = this.list.join(', ');

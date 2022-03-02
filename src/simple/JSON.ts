@@ -34,7 +34,6 @@ export default class SimpleJSON extends Base{
 		const d = this.data;
 		objUtil.set(d, objUtil.parseKey(key), value);
 
-
 		this._save(d);
 	}
 

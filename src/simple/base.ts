@@ -122,7 +122,7 @@ class ArrayUtils{
 		return values;
 	}
 
-	public random(key: string): value{
+	public random(key: string): value {
 		const arr = this._getArray(key);
 		return arr[Math.floor(Math.random() * arr.length)];
 	}
@@ -274,7 +274,11 @@ export const objUtil = {
 			}
 
 			if(prop in obj){
-				// @ts-expect-error string as a index of an array
+				// @ts-expect-error using isNaN to check if the string is a number
+				if(Array.isArray(obj) && isNaN(prop)){
+					throw new Error(`value at ${props.join('.')} is an array and the key is not a number`);
+				}
+				// @ts-expect-error using string as index of an array
 				obj = obj[prop] as value;
 			}else return;
 		}
@@ -283,9 +287,6 @@ export const objUtil = {
 	},
 	set(obj: value, props: string[], value: value = null): void {
 		if(props.length === 0) return;
-		if(typeof obj !== 'object' || obj === null){
-			throw new Error(`value at ${props.join('.')} is not an object`);
-		}
 
 		const last = props.pop() as string;
 
@@ -295,17 +296,27 @@ export const objUtil = {
 			}
 
 			if(prop in o){
-				// @ts-expect-error string as a index of an array
+				// @ts-expect-error using string as index of an array
 				return o[prop] as value;
 			}
-			return null;
+
+			// @ts-expect-error comparing string with number
+			if(Array.isArray(o) && prop >= o.length){
+				throw new Error("adding a value to an array in the 'set' method is forbidden");
+			}
+			// @ts-expect-error using string as index of an array
+			o[prop] = {};
+			// @ts-expect-error using string as index of an array
+			return o[prop] as Data;
 		}, obj);
 
-		// @ts-expect-error comparing string with number
-		if(Array.isArray(final) && last >= final.length){
+		if(typeof final !== 'object' || final === null){
+			throw new Error(`value at ${props.join('.')} is not an object`);
+			// @ts-expect-error comparing string with number
+		}else if(Array.isArray(final) && last >= final.length){
 			throw new Error("adding a value to an array in the 'set' method is forbidden");
 		}
-		// @ts-expect-error string as a index of an array
+		// @ts-expect-error using string as index of an array
 		final[last] = value;
 	},
 	delete(obj: value, props: string[]): void {

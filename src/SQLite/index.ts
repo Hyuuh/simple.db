@@ -3,13 +3,6 @@ import * as BSQL3 from 'better-sqlite3';
 import { Base, ColumnsManager, TransactionManager } from './utils';
 import type { Data, condition, value } from './utils';
 
-interface TableStatements {
-	selectAll: BSQL3.Statement;
-	insert: BSQL3.Statement;
-	insertMany: BSQL3.Transaction;
-	deleteAll: BSQL3.Statement;
-}
-
 let lastID = 0;
 
 class Table extends Base{
@@ -18,27 +11,42 @@ class Table extends Base{
 		this.name = name;
 
 		const selectAll = db.prepare(`SELECT * FROM [${name}]`);
-		const columnsList = selectAll.columns().map(c => c.name);
+		const columnsList = selectAll.columns().map(c => `${c.name}`);
 		this.columns = new ColumnsManager(db, name, columnsList);
+
+		const a = `(${
+			columnsList.join(', ')
+		}) VALUES(${
+			columnsList.map(c => `@${c}`).join(', ')
+		})`;
 
 		this.statements = {
 			selectAll,
-			insert: this.db.prepare(`INSERT INTO [${name}] (${
-				columnsList.join(', ')
-			}) VALUES(${
-				columnsList.map(c => `@${c}`).join(', ')
-			})`),
+			deleteAll: this.db.prepare(`DELETE FROM [${name}]`),
+			insert: this.db.prepare(`INSERT INTO [${name}] ${a}`),
 			insertMany: this.db.transaction(values => {
 				for(const value of values) this.statements.insert.run(
-					Object.assign({}, this.columns.defaults, value)
+					Object.assign({}, this.columns.defaultValues, value)
 				);
 			}),
-			deleteAll: this.db.prepare(`DELETE FROM [${name}]`),
+			replace: this.db.prepare(`REPLACE INTO [${this.name}] ${a}`),
+			replaceMany: this.db.transaction(values => {
+				for(const value of values) this.statements.replace.run(
+					Object.assign({}, this.columns.defaultValues, value)
+				);
+			}),
 		};
 	}
 	public name: string;
 	public columns: ColumnsManager;
-	private readonly statements: TableStatements;
+	private readonly statements: {
+		selectAll: BSQL3.Statement;
+		deleteAll: BSQL3.Statement;
+		insert: BSQL3.Statement;
+		insertMany: BSQL3.Transaction;
+		replace: BSQL3.Statement;
+		replaceMany: BSQL3.Transaction;
+	};
 
 	public static prepareValues(values: Data, forSet?: boolean): string {
 		const keys = Object.keys(values);
@@ -84,19 +92,29 @@ class Table extends Base{
 			this.statements.insertMany(values);
 		}else{
 			this.statements.insert.run(
-				Object.assign({}, this.columns.defaults, values)
+				Object.assign({}, this.columns.defaultValues, values)
 			);
 		}
 	}
 
-	public replace(values: Data, defaults = false): void {
-		this.db.prepare(`REPLACE INTO [${this.name}] ${
-			Table.prepareValues(values)
-		}`).run(
-			defaults ?
-				Object.assign({}, this.columns.defaults, values) :
-				values
-		);
+	public replace(values: Data | Data[], defaults = false): void {
+		if(defaults){
+			if(Array.isArray(values)){
+				this.statements.replaceMany(values);
+			}else{
+				this.statements.replace.run(
+					Object.assign({}, this.columns.defaultValues, values)
+				);
+			}
+		}else if(Array.isArray(values)){
+			this.db.transaction(() => {
+				for(const vals of values) this.replace(vals);
+			})();
+		}else{
+			this.db.prepare(`REPLACE INTO [${this.name}] ${
+				Table.prepareValues(values)
+			}`).run(values);
+		}
 	}
 
 	public get(condition: condition = null): Data {
@@ -156,7 +174,11 @@ class TablesManager extends Base{
 	}
 	public list: Record<string, Table> = {};
 
-	public create(name: string, columns: string[]): Table {
+	public create(
+		name: string,
+		columns: string[],
+		defaultValues: Data = {}
+	): Table {
 		if(name in this.list) return this.list[name];
 		if(columns.length === 0){
 			throw new Error('columns are empty');
@@ -166,8 +188,11 @@ class TablesManager extends Base{
 			columns.join(', ')
 		})`).run();
 
-		this.list[name] = new Table(this.db, name);
-		return this.list[name];
+		const table = new Table(this.db, name);
+		Object.assign(table.columns.defaultValues, defaultValues);
+
+		this.list[name] = table;
+		return table;
 	}
 
 	public get(name: string): Table {

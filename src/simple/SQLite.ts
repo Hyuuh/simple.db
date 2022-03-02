@@ -72,17 +72,17 @@ export default class SimpleSQLite extends Base{
 	}
 
 	private _set(key: string, value: value): void {
+		if(this.cache) this._cache[key] = value;
 		this.statements.set.run(key, JSON.stringify(value));
 	}
 	public set(key: string, value: value): void {
 		const [k, ...props] = objUtil.parseKey(key);
 
 		if(props.length){
-			const data = this._get(k);
+			const data = this._get(k) || {};
 			objUtil.set(data, props, value);
 			this._set(k, data);
 		}else{
-			if(this.cache) this._cache[k] = value;
 			this._set(k, value);
 		}
 	}
@@ -92,13 +92,6 @@ export default class SimpleSQLite extends Base{
 	}
 	public delete(key: string): void {
 		const [k, ...props] = objUtil.parseKey(key);
-		/*
-		db.set('baz', {
-			a: 1,
-			b: [1, 2, 3],
-		});
-		*/
-		// k = 'baz' props = ['a']
 
 		if(props.length){
 			const data = this._get(k);

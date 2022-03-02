@@ -63,8 +63,37 @@ describe('simple', () => {
 		db.set('baz.b.1', 'foo');
 		expect(db.get('baz'), { b: [1, 'foo', 3] });
 
-		// db.clear();
-		// expect(db.data, {});
+
+		// number utils
+		db.set('asd.xd', 123);
+		db.number.add('asd.xd', 10);
+		db.number.subtract('asd.xd', 3);
+
+		expect(db.values[2], { xd: 130 });
+
+
+		// array utils
+
+		db.array.push('t', 1, 2, 3, 4, 5);
+		expect(
+			db.array.extract('t', (v: number) => v > 3),
+			4
+		);
+
+		db.array.splice('t', 1, 2, 'foo', 'bar');
+		expect(db.get('t'), [1, 'foo', 'bar', 5]);
+
+		// @ts-expect-error db.array.random() may return undefined
+		if(![1, 'foo', 'bar', 5].includes(db.array.random('t'))){
+			throw new Error('expected db.array.random() to return one of the values of the array');
+		}
+
+		// from here all the other methods are from Array.prototype if there was no error already, there won't be
+
+		// end
+
+		db.clear();
+		expect(db.data, {});
 		if('close' in db) db.close();
 	}
 
@@ -94,7 +123,6 @@ after(() => {
 		if(existsSync(path)) unlinkSync(path);
 	}
 });
-
 
 function expect(value: unknown, expectedValue?: unknown): void {
 	if(typeof value === 'function'){

@@ -8,7 +8,7 @@
 	"deprecated": false,
 	"scripts": {
 		"node": "ts-node src/index.ts",
-		"bench": "ts-node test/bench.ts",
+		"bench": "ts-node test/bench.ts --timeout 5000",
 		"test": "mocha -r ts-node/register test/mocha.ts",
 		"lint": "npx eslint . --fix"
 	},
