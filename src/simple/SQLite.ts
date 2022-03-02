@@ -7,10 +7,7 @@ interface entry {
 	value: string;
 }
 
-interface KeysChanged {
-	update: string[];
-	delete: string[];
-}
+type change = [string, true?];
 
 export default class SimpleSQLite extends Base{
 	constructor(path = './simple-db.sqlite', name = 'simple-db'){
@@ -38,87 +35,67 @@ export default class SimpleSQLite extends Base{
 		this.statements = {
 			set: db.prepare(`INSERT OR REPLACE INTO [${name}] VALUES(?, ?)`),
 			delete: db.prepare(`DELETE FROM [${name}] WHERE key = ?`),
-			getAll: db.prepare(`SELECT * FROM [${name}]`),
-			get: db.prepare(`SELECT * FROM [${name}] WHERE key = ?`),
 			clear: db.prepare(`DELETE FROM [${name}]`),
 			save: db.transaction(() => {
-				for(const key of this._keysChanged.update){
-					this.statements.set.run(key, JSON.stringify(this.data[key]));
+				for(const [key, del] of this.changes){
+					if(del === true){
+						this.statements.delete.run(key);
+					}else{
+						this.statements.set.run(key, JSON.stringify(
+							this.data[key]
+						));
+					}
 				}
-				for(const key of this._keysChanged.delete){
-					this.statements.delete.run(key);
+
+				if(this.closed){
+					this.statements.close();
 				}
 			}),
+			close: db.close.bind(db) as () => void,
 		};
-		this._cache = this._getAll();
-		this.close = db.close.bind(db) as () => void;
+
+		const data = db.prepare(`SELECT * FROM [${name}]`).all() as entry[];
+		for(const { key, value } of data){
+			this.data[key] = JSON.parse(value) as value;
+		}
 	}
-	declare protected _cache: DataObj;
+	public data: DataObj = {};
+	private closed = false;
+	private changes: change[] = [];
 	private readonly statements: {
 		set: BSQL3.Statement;
-		getAll: BSQL3.Statement;
-		get: BSQL3.Statement;
 		clear: BSQL3.Statement;
 		delete: BSQL3.Statement;
 		save: BSQL3.Transaction;
+		close: () => void;
 	};
 
-	private _getAll(): DataObj {
-		return this.statements.getAll.all().reduce<DataObj>((
-			acc: { [key: string]: value },
-			{ key, value }: { key: string, value: string }
-		) => {
-			acc[key] = JSON.parse(value) as value;
-
-			return acc;
-		}, {});
-	}
-
-	public data: DataObj = {};
-
-	public get(key: string): value {
-		return objUtil.get(this.data, objUtil.parseKey(key));
-	}
-
 	public set(key: string, value: value): void {
-		const [k, ...props] = objUtil.parseKey(key);
+		const props = objUtil.parseKey(key);
+		super.set(props, value);
 
-		if(props.length){
-			const data = this.get(k);
-			objUtil.set(data, props, value);
-			this._set(k, data);
-		}else{
-			this._set(k, value);
-		}
+		this.changes.push([props[0]]);
 	}
-
 	public delete(key: string): void {
-		const [k, ...props] = objUtil.parseKey(key);
+		const props = objUtil.parseKey(key);
+		super.delete(props);
 
-		if(props.length){
-			const data = this._get(k);
-
-			objUtil.delete(data, props);
-			this._set(k, data);
+		if(props.length === 1){
+			this.changes.push([props[0], true]);
 		}else{
-			delete this.data[k];
+			this.changes.push([props[0]]);
 		}
 	}
-
 	public clear(): void {
 		this.statements.clear.run();
 		this.data = {};
 	}
-
-	public close: () => void;
-
-	private readonly _keysChanged: KeysChanged = {
-		update: [],
-		delete: [],
-	};
 	public save(): void {
 		this.statements.save();
-		this._keysChanged.update = [];
-		this._keysChanged.delete = [];
+		this.changes = [];
+	}
+
+	public close(): void {
+		this.closed = true;
 	}
 }

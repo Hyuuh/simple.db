@@ -41,23 +41,29 @@ class ArrayUtils{
 
 	private readonly db: Base;
 
-	public _getArray(key: string): value[]{
+	public _getArray(key: key): value[]{
 		const arr = this.db.get(key);
 
 		if(!Array.isArray(arr)){
+			if(Array.isArray(key)){
+				throw new Error(`value stored in '${key.join('.')}' is not an array`);
+			}
 			throw new Error(`data stored in the key '${key}' is not an array`);
 		}
 
 		return arr;
 	}
 
-	public push(key: string, ...values: value[]): value[]{
+	public push(key: key, ...values: value[]): value[]{
 		let arr = this.db.get(key);
 
 		if(typeof arr === 'undefined' || arr === null){
 			arr = values;
 		}else{
 			if(!Array.isArray(arr)){
+				if(Array.isArray(key)){
+					throw new Error(`value stored in '${key.join('.')}' is not an array`);
+				}
 				throw new Error(`value stored in '${key}' is not an array`);
 			}
 			arr.push(...values);
@@ -68,18 +74,15 @@ class ArrayUtils{
 		return arr;
 	}
 
+	// from here methods throw an error if the array does not exists
+
 	public extract(
-		key: string,
+		key: key,
 		index: number | string | (
 			(value: value, index: number, obj: value[]) => unknown
 		)
 	): value {
-		const arr = this.db.get(key);
-
-		if(typeof arr === 'undefined') return;
-		if(!Array.isArray(arr)){
-			throw new Error(`data stored in the key '${key}' is not an array`);
-		}
+		const arr = this._getArray(key);
 
 		if(typeof index === 'function'){
 			index = arr.findIndex(index);
@@ -99,10 +102,8 @@ class ArrayUtils{
 		return value;
 	}
 
-	// from here methods throw an error if the array does not exists
-
 	public splice(
-		key: string,
+		key: key,
 		start: number,
 		deleteCount: number,
 		...items: value[]
@@ -115,7 +116,7 @@ class ArrayUtils{
 		return values;
 	}
 
-	public random(key: string): value {
+	public random(key: key): value {
 		const arr = this._getArray(key);
 		return arr[Math.floor(Math.random() * arr.length)];
 	}
@@ -123,7 +124,7 @@ class ArrayUtils{
 	// from here methods throw an error if the array does not exists
 
 	public sort(
-		key: string,
+		key: key,
 		compareFn?: (a: value, b: value) => number
 	): value[]{
 		const sorted = this._getArray(key).sort(compareFn);
@@ -134,7 +135,7 @@ class ArrayUtils{
 	}
 
 	public includes(
-		key: string,
+		key: key,
 		searchElement: value,
 		fromIndex?: number
 	): boolean {
@@ -142,7 +143,7 @@ class ArrayUtils{
 	}
 
 	public find(
-		key: string,
+		key: key,
 		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): value {
@@ -150,7 +151,7 @@ class ArrayUtils{
 	}
 
 	public findIndex(
-		key: string,
+		key: key,
 		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): number | -1{
@@ -158,7 +159,7 @@ class ArrayUtils{
 	}
 
 	public reduce(
-		key: string,
+		key: key,
 		callback: (previousValue: unknown, currentValue: value, currentIndex: number, array: value[]) => unknown,
 		initialValue: unknown
 	): unknown{
@@ -166,7 +167,7 @@ class ArrayUtils{
 	}
 
 	public filter(
-		key: string,
+		key: key,
 		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): value[]{
@@ -174,7 +175,7 @@ class ArrayUtils{
 	}
 
 	public map(
-		key: string,
+		key: key,
 		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): unknown[]{
@@ -182,7 +183,7 @@ class ArrayUtils{
 	}
 
 	public some(
-		key: string,
+		key: key,
 		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): boolean{
@@ -190,7 +191,7 @@ class ArrayUtils{
 	}
 
 	public every(
-		key: string,
+		key: key,
 		callback: (value: value, index: number, obj: value[]) => unknown,
 		thisArg?: unknown
 	): boolean{
@@ -199,7 +200,21 @@ class ArrayUtils{
 }
 
 const regex = /\.{2,}|^\.|\.$/; // /\[(.*?)\]|[^.[]+/g; //
+export type key = string | string[];
 export const objUtil = {
+	parseKey(key: key): string[] {
+		if(Array.isArray(key)) return key;
+
+		key = key.trim();
+
+		if(typeof key !== 'string'){
+			throw new Error('\'key\' must be a string');
+		}else if(regex.test(key) || key === ''){
+			throw new Error('\'key\' is not valid');
+		}
+
+		return key.split(/\.|\[(\d)\]/).filter(x => x);
+	},
 	get(obj: value, props: string[]): value {
 		if(props.length === 0) return obj;
 
@@ -268,17 +283,6 @@ export const objUtil = {
 		}
 		delete obj[key];
 	},
-	parseKey(key: string): string[]{
-		key = key.trim();
-
-		if(typeof key !== 'string'){
-			throw new Error('\'key\' must be a string');
-		}else if(regex.test(key) || key === ''){
-			throw new Error('\'key\' is not valid');
-		}
-
-		return key.split(/\.|\[(\d)\]/).filter(x => x);
-	},
 };
 
 export default abstract class Base{
@@ -286,6 +290,8 @@ export default abstract class Base{
 		this.array = new ArrayUtils(this);
 		this.number = new NumberUtils(this);
 	}
+	public array: ArrayUtils;
+	public number: NumberUtils;
 
 	public data: Data;
 	public get keys(): string[] {
@@ -298,35 +304,39 @@ export default abstract class Base{
 		return Object.entries(this.data);
 	}
 
-	public get(key: string): value {
+	public get(key: key): value {
 		return objUtil.get(this.data, objUtil.parseKey(key));
 	}
 
-	public set(key: string, value: value): void {
+	public set(key: key, value: value): void {
 		objUtil.set(this.data, objUtil.parseKey(key), value);
 
 		this._queueSave();
 	}
 
-	public delete(key: string): void{
+	public delete(key: key): void {
 		objUtil.delete(this.data, objUtil.parseKey(key));
 
 		this._queueSave();
 	}
 
-	public clear(): void{
-		this.data = Array.isArray(this.data) ? [] : {};
-		this.save();
+	public abstract clear(): void;
+	public abstract save(): void;
+
+
+	public toJSON(indentation = ''): string {
+		return JSON.stringify(this.data, null, indentation);
 	}
 
-	public abstract save(): void;
-	protected abstract _queueSave(): void;
+	public saveQueued = false;
+	private _queueSave(): void {
+		if(this.saveQueued) return;
 
-	public array: ArrayUtils;
-	public number: NumberUtils;
-
-	public toJSON(indentation = ''): string{
-		return JSON.stringify(this.data, null, indentation);
+		this.saveQueued = true;
+		setTimeout(() => {
+			this.save();
+			this.saveQueued = false;
+		}, 100);
 	}
 }
 
@@ -358,43 +368,4 @@ database
 	|--keys
 	|--values
 	|--entries
-*/
-
-
-/*
-function parseKey(key){
-	if(typeof key !== 'string'){
-		throw new DatabaseError('\'key\' must be a string');
-	}else if(key.match(/\.{2,}|^\.|\.$/) || key === ''){
-		throw new DatabaseError('\'key\' is not valid');
-	}
-
-	return key.split(/\.|\[(\d)\]/).filter(k => k);
-}
-
-
-function get(object, path, defaultValue) {
-  const result = object == null ? undefined : baseGet(object, path)
-  return result === undefined ? defaultValue : result
-}
-
-function baseGet(object, path) {
-  path = castPath(path, object)
-
-  let index = 0
-  const length = path.length
-
-  while (object != null && index < length) {
-    object = object[toKey(path[index++])]
-  }
-  return (index && index == length) ? object : undefined
-}
-
-function toKey(value) {
-  if (typeof value === 'string' || isSymbol(value)) {
-    return value
-  }
-  const result = `${value}`
-  return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result
-}
 */

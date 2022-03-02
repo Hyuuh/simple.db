@@ -74,7 +74,6 @@ describe('simple', () => {
 
 		db.array.push('t', 1, 2, 3, 4, 5);
 		expect(
-			// @ts-expect-error assuming that value is a number
 			db.array.extract('t', (v: number) => v > 3),
 			4
 		);
@@ -97,17 +96,13 @@ describe('simple', () => {
 	}
 
 	it('sqlite', () => {
-		const db = new Databases.simple.SQLite({
-			path: 'test/simple-db.sqlite',
-		});
+		const db = new Databases.simple.SQLite('test/simple-db.sqlite');
 
 		testSimple(db);
 	});
 
 	it('json', () => {
-		const db = new Databases.simple.JSON({
-			path: 'test/simple-db.json',
-		});
+		const db = new Databases.simple.JSON('test/simple-db.json');
 
 		testSimple(db);
 	});

@@ -17,25 +17,13 @@ export default class SimpleJSON extends Base{
 	private readonly path: string;
 	private readonly check: boolean;
 
-	private _saveQueued = false;
-	protected _queueSave(): void {
-		if(this._saveQueued) return;
-
-		this._saveQueued = true;
-		setTimeout(() => {
-			this.save();
-			this._saveQueued = false;
-		}, 100);
+	public clear(): void {
+		this.data = Array.isArray(this.data) ? [] : {};
+		this.save();
 	}
 
 	public save(){
 		writeJSON(this.path, this.data, this.check);
-		this.save();
-	}
-
-	public reload(){
-		this.save();
-		this.data = readJSON(this.path);
 	}
 }
 
