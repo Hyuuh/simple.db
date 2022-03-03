@@ -108,7 +108,11 @@ describe('simple', () => {
 	});
 });
 
-after(() => {
+after(async () => {
+	await new Promise(res => {
+		setTimeout(res, 1000);
+	});
+
 	for(const path of [
 		'test/simple-db.json',
 		'test/simple-db.sqlite',

@@ -37,12 +37,8 @@ for(let i = 0; i < 1000; i++){
 }
 
 const megadb = new MegaDB.crearDB('megadb', './test');
-const simpleSQLite = new Databases.SimpleSQLite({
-	path: './test/simple-db.sqlite',
-});
-const simpleJSON = new Databases.SimpleJSON({
-	path: './test/simple-db.json',
-});
+const simpleSQLite = new Databases.SimpleSQLite('./test/simple-db.sqlite');
+const simpleJSON = new Databases.SimpleJSON('./test/simple-db.json');
 
 /*
 simple.JSON
@@ -67,7 +63,7 @@ delete x 8.51 ops/sec ±1.54% (26 runs sampled)
 */
 
 createBench('simple.JSON')
-	.add('set ()', () => {
+	.add('set', () => {
 		for(const [key, value] of entries){
 			simpleJSON.set(key, value);
 		}
@@ -103,7 +99,7 @@ createBench('megadb')
 	.run();
 
 createBench('simple.SQLite')
-	.add('set ()', () => {
+	.add('set', () => {
 		for(const [key, value] of entries){
 			simpleSQLite.set(key, value);
 		}
@@ -121,7 +117,7 @@ createBench('simple.SQLite')
 	.run();
 
 createBench('quick.db')
-	.add('set ()', () => {
+	.add('set', () => {
 		for(const [key, value] of entries){
 			quickdb.set(key, value);
 		}

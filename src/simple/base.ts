@@ -238,9 +238,9 @@ export const objUtil = {
 	set(obj: value, props: string[], value: value = null): void {
 		if(props.length === 0) return;
 
-		const last = props.pop() as string;
+		const last = props[props.length - 1];
 
-		const final = props.reduce<value>((o, prop: string) => {
+		const final = props.slice(0, -1).reduce<value>((o, prop: string) => {
 			if(typeof o !== 'object' || o === null){
 				throw new Error(`value at ${props.join('.')} is not an object`);
 			}
@@ -319,17 +319,15 @@ export default abstract class Base{
 
 		this._queueSave();
 	}
-
 	public abstract clear(): void;
 	public abstract save(): void;
-
 
 	public toJSON(indentation = ''): string {
 		return JSON.stringify(this.data, null, indentation);
 	}
 
 	public saveQueued = false;
-	private _queueSave(): void {
+	protected _queueSave(): void {
 		if(this.saveQueued) return;
 
 		this.saveQueued = true;
